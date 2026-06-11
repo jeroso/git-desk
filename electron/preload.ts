@@ -24,6 +24,15 @@ const api = {
       ipcRenderer.invoke('git:commit', repo, files, msg),
     commitAndPush: (repo: string, files: string[], msg: string) =>
       ipcRenderer.invoke('git:commitAndPush', repo, files, msg),
+    remotes: (repo: string) => ipcRenderer.invoke('git:remotes', repo),
+    setRemoteAlias: (repo: string, name: string, url: string, alias: string) =>
+      ipcRenderer.invoke('git:setRemoteAlias', repo, name, url, alias),
+    fetch: (repo: string) => ipcRenderer.invoke('git:fetch', repo),
+    pull: (repo: string) => ipcRenderer.invoke('git:pull', repo),
+    push: (repo: string) => ipcRenderer.invoke('git:push', repo),
+  },
+  ssh: {
+    hosts: () => ipcRenderer.invoke('ssh:hosts'),
   },
   shell: {
     openPath: (p: string) => ipcRenderer.invoke('shell:openPath', p),

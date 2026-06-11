@@ -6,6 +6,8 @@ import { getBranches, checkout, createBranch } from '../git/branch'
 import { getCommitFiles, getCommitDiff, getWorktreeDiff } from '../git/diff'
 import { listRepos, addRepo, removeRepo } from '../repos/store'
 import { commit, commitAndPush } from '../git/commit'
+import { getRemotes, setRemoteUrl, rewriteRemoteHost, fetchRemote, pull, push } from '../git/remote'
+import { readSshHosts } from '../ssh/config'
 
 export function registerIpc() {
   // repos
@@ -49,4 +51,14 @@ export function registerIpc() {
 
   // open path in external editor / file manager
   ipcMain.handle('shell:openPath', (_e, p: string) => shell.openPath(p))
+
+  // ssh + remote
+  ipcMain.handle('ssh:hosts', () => readSshHosts())
+  ipcMain.handle('git:remotes', (_e, repo: string) => getRemotes(repo))
+  ipcMain.handle('git:setRemoteAlias', async (_e, repo: string, name: string, url: string, alias: string) => {
+    return setRemoteUrl(repo, name, rewriteRemoteHost(url, alias))
+  })
+  ipcMain.handle('git:fetch', (_e, repo: string) => fetchRemote(repo))
+  ipcMain.handle('git:pull', (_e, repo: string) => pull(repo))
+  ipcMain.handle('git:push', (_e, repo: string) => push(repo))
 }

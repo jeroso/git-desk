@@ -8,6 +8,8 @@ import { ChangedFiles } from './components/ChangedFiles'
 import { DiffView } from './components/DiffView'
 import { Toast } from './components/Toast'
 import { CommitView } from './components/CommitView'
+import { RemoteDialog } from './components/RemoteDialog'
+import { withToast } from './lib/api'
 
 export default function App() {
   const { current, loadRecents } = useRepoStore()
@@ -24,12 +26,16 @@ export default function App() {
 
   const repo = current?.path
   const [tab, setTab] = useState<'log' | 'commit'>('log')
+  const [showRemote, setShowRemote] = useState(false)
 
   return (
     <div className="h-full flex flex-col">
       <TopBar
         onRefresh={() => repo && log.refresh(repo)}
-        onOpenRemote={() => {}}
+        onOpenRemote={() => setShowRemote(true)}
+        onFetch={async () => { if (repo) { await withToast(() => window.api.git.fetch(repo)); log.refresh(repo) } }}
+        onPull={async () => { if (repo) { await withToast(() => window.api.git.pull(repo)); log.refresh(repo) } }}
+        onPush={async () => { if (repo) await withToast(() => window.api.git.push(repo)) }}
       />
       {!repo ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">
@@ -83,6 +89,7 @@ export default function App() {
           )}
         </div>
       )}
+      {showRemote && repo && <RemoteDialog repo={repo} onClose={() => setShowRemote(false)} />}
       <Toast />
     </div>
   )
