@@ -6,9 +6,10 @@ interface Props {
   graph: GraphLayout
   selectedHash: string | null
   onSelect: (hash: string) => void
+  onCherryPick: (hash: string) => void
 }
 
-export function CommitGraph({ commits, graph, selectedHash, onSelect }: Props) {
+export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPick }: Props) {
   const width = graphWidth(graph)
   const height = commits.length * ROW_H
 
@@ -44,6 +45,10 @@ export function CommitGraph({ commits, graph, selectedHash, onSelect }: Props) {
             <button
               key={c.hash}
               onClick={() => onSelect(c.hash)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                if (window.confirm(`Cherry-pick ${c.hash.slice(0, 7)} 하시겠습니까?`)) onCherryPick(c.hash)
+              }}
               style={{ height: ROW_H }}
               className={`w-full flex items-center gap-3 px-2 text-left whitespace-nowrap ${
                 c.hash === selectedHash ? 'bg-blue-100' : 'hover:bg-gray-100'
