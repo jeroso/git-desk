@@ -65,7 +65,7 @@ export function registerIpc() {
 
   ipcMain.handle('git:merge', (_e, repo: string, b: string) => mergeBranch(repo, b))
   ipcMain.handle('git:rebase', (_e, repo: string, b: string) => rebaseOnto(repo, b))
-  ipcMain.handle('git:cherryPick', (_e, repo: string, h: string) => cherryPick(repo, h))
+  ipcMain.handle('git:cherryPick', (_e, repo: string, hashes: string[]) => cherryPick(repo, hashes))
   ipcMain.handle('git:continueOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
     continueOp(repo, op),
   )

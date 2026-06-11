@@ -18,8 +18,9 @@ export function mergeBranch(repo: string, branch: string) {
 export function rebaseOnto(repo: string, branch: string) {
   return tryOp(repo, ['rebase', branch])
 }
-export function cherryPick(repo: string, hash: string) {
-  return tryOp(repo, ['cherry-pick', hash])
+/** 하나 이상의 커밋을 순서대로 cherry-pick한다 (호출부가 oldest→newest 순서로 전달). */
+export function cherryPick(repo: string, hashes: string[]) {
+  return tryOp(repo, ['cherry-pick', ...hashes])
 }
 
 // 충돌 후 진행/중단

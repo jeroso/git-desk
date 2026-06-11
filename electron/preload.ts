@@ -32,7 +32,7 @@ const api = {
     push: (repo: string) => ipcRenderer.invoke('git:push', repo),
     merge: (repo: string, b: string) => ipcRenderer.invoke('git:merge', repo, b),
     rebase: (repo: string, b: string) => ipcRenderer.invoke('git:rebase', repo, b),
-    cherryPick: (repo: string, h: string) => ipcRenderer.invoke('git:cherryPick', repo, h),
+    cherryPick: (repo: string, hashes: string[]) => ipcRenderer.invoke('git:cherryPick', repo, hashes),
     continueOp: (repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
       ipcRenderer.invoke('git:continueOp', repo, op),
     abortOp: (repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
