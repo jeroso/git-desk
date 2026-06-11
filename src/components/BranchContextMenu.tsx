@@ -6,7 +6,7 @@ interface Props {
   branch: string
   isCurrent: boolean
   onClose: () => void
-  onAction: (action: 'checkout' | 'merge' | 'rebase' | 'cherryPick') => void
+  onAction: (action: 'checkout' | 'newBranch' | 'merge' | 'rebase') => void
 }
 
 export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }: Props) {
@@ -27,8 +27,9 @@ export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }
     setPos({ x: nx, y: ny })
   }, [x, y])
 
-  const items: { key: 'checkout' | 'merge' | 'rebase'; label: string }[] = [
+  const items: { key: 'checkout' | 'newBranch' | 'merge' | 'rebase'; label: string }[] = [
     { key: 'checkout', label: `Checkout '${branch}'` },
+    { key: 'newBranch', label: `New branch from '${branch}'…` },
     { key: 'merge', label: `Merge '${branch}' into current` },
     { key: 'rebase', label: `Rebase current onto '${branch}'` },
   ]

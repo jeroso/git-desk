@@ -4,7 +4,10 @@ import { BranchContextMenu } from './BranchContextMenu'
 
 interface Props {
   branches: Branch[]
+  selectedRef: string | null
+  onSelectBranch: (ref: string | null) => void
   onCheckout: (name: string) => void
+  onNewBranch: (base: string) => void
   onMerge: (name: string) => void
   onRebase: (name: string) => void
   onCreate: () => void
@@ -39,7 +42,16 @@ function buildTree(branches: Branch[]): TreeNode {
   return root
 }
 
-export function BranchPanel({ branches, onCheckout, onMerge, onRebase, onCreate }: Props) {
+export function BranchPanel({
+  branches,
+  selectedRef,
+  onSelectBranch,
+  onCheckout,
+  onNewBranch,
+  onMerge,
+  onRebase,
+  onCreate,
+}: Props) {
   const [filter, setFilter] = useState('')
   const [menu, setMenu] = useState<{ x: number; y: number; b: Branch } | null>(null)
 
@@ -56,6 +68,8 @@ export function BranchPanel({ branches, onCheckout, onMerge, onRebase, onCreate 
     setMenu({ x: e.clientX, y: e.clientY, b })
   }
 
+  const sectionProps = { selectedRef, onSelectBranch, onCheckout, onContextMenu: openMenu }
+
   return (
     <div className="w-56 border-r flex flex-col text-xs">
       <div className="flex gap-1 m-2">
@@ -70,20 +84,17 @@ export function BranchPanel({ branches, onCheckout, onMerge, onRebase, onCreate 
         </button>
       </div>
       <div className="overflow-auto flex-1">
-        <Section
-          title="Local"
-          branches={local}
-          expandAll={filter.length > 0}
-          onCheckout={onCheckout}
-          onContextMenu={openMenu}
-        />
-        <Section
-          title="Remote"
-          branches={remote}
-          expandAll={filter.length > 0}
-          onCheckout={onCheckout}
-          onContextMenu={openMenu}
-        />
+        <button
+          onClick={() => onSelectBranch(null)}
+          className={`w-full text-left px-2 py-0.5 flex items-center gap-1 hover:bg-gray-100 ${
+            selectedRef === null ? 'bg-blue-100 font-semibold' : ''
+          }`}
+        >
+          <span className="w-3 text-center">✱</span>
+          <span>All branches</span>
+        </button>
+        <Section title="Local" branches={local} expandAll={filter.length > 0} {...sectionProps} />
+        <Section title="Remote" branches={remote} expandAll={filter.length > 0} {...sectionProps} />
       </div>
       {menu && (
         <BranchContextMenu
@@ -94,6 +105,7 @@ export function BranchPanel({ branches, onCheckout, onMerge, onRebase, onCreate 
           onClose={() => setMenu(null)}
           onAction={(a) => {
             if (a === 'checkout') onCheckout(menu.b.name)
+            else if (a === 'newBranch') onNewBranch(menu.b.name)
             else if (a === 'merge') onMerge(menu.b.name)
             else if (a === 'rebase') onRebase(menu.b.name)
           }}
@@ -103,19 +115,17 @@ export function BranchPanel({ branches, onCheckout, onMerge, onRebase, onCreate 
   )
 }
 
-function Section({
-  title,
-  branches,
-  expandAll,
-  onCheckout,
-  onContextMenu,
-}: {
+interface SectionProps {
   title: string
   branches: Branch[]
   expandAll: boolean
+  selectedRef: string | null
+  onSelectBranch: (ref: string | null) => void
   onCheckout: (name: string) => void
   onContextMenu: (e: React.MouseEvent, b: Branch) => void
-}) {
+}
+
+function Section({ title, branches, expandAll, ...rowProps }: SectionProps) {
   // Collapsed folder paths (default: everything expanded).
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const tree = useMemo(() => buildTree(branches), [branches])
@@ -132,16 +142,7 @@ function Section({
     nodes.map((n) => {
       const kids = [...n.children.values()]
       if (kids.length === 0) {
-        return (
-          <BranchRow
-            key={n.fullName}
-            branch={n.branch!}
-            label={n.segment}
-            depth={depth}
-            onCheckout={onCheckout}
-            onContextMenu={onContextMenu}
-          />
-        )
+        return <BranchRow key={n.fullName} branch={n.branch!} label={n.segment} depth={depth} {...rowProps} />
       }
       const isCollapsed = !expandAll && collapsed.has(n.fullName)
       return (
@@ -156,15 +157,8 @@ function Section({
           </button>
           {!isCollapsed && (
             <>
-              {/* a branch that also acts as a folder prefix (rare) shows as a leaf inside */}
               {n.branch && (
-                <BranchRow
-                  branch={n.branch}
-                  label={n.segment}
-                  depth={depth + 1}
-                  onCheckout={onCheckout}
-                  onContextMenu={onContextMenu}
-                />
+                <BranchRow branch={n.branch} label={n.segment} depth={depth + 1} {...rowProps} />
               )}
               {renderNodes(kids, depth + 1)}
             </>
@@ -185,24 +179,30 @@ function BranchRow({
   branch: b,
   label,
   depth,
+  selectedRef,
+  onSelectBranch,
   onCheckout,
   onContextMenu,
 }: {
   branch: Branch
   label: string
   depth: number
+  selectedRef: string | null
+  onSelectBranch: (ref: string | null) => void
   onCheckout: (name: string) => void
   onContextMenu: (e: React.MouseEvent, b: Branch) => void
 }) {
+  const isViewed = b.name === selectedRef
   return (
     <div
+      onClick={() => onSelectBranch(b.name)}
       onDoubleClick={() => !b.isRemote && onCheckout(b.name)}
       onContextMenu={(e) => onContextMenu(e, b)}
       style={{ paddingLeft: depth * 12 + 8 }}
       className={`pr-2 py-0.5 rounded cursor-default flex items-center gap-1 hover:bg-gray-100 ${
-        b.isCurrent ? 'font-semibold text-blue-700' : ''
-      }`}
-      title={b.isRemote ? b.name : 'double-click to checkout'}
+        isViewed ? 'bg-blue-100' : ''
+      } ${b.isCurrent ? 'font-semibold text-blue-700' : ''}`}
+      title={b.isRemote ? b.name : 'click: 히스토리 보기 · double-click: checkout'}
     >
       <span className="w-3 text-center">{b.isCurrent ? '●' : '○'}</span>
       <span className="truncate flex-1">{label}</span>

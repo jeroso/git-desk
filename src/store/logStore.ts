@@ -6,11 +6,15 @@ interface LogState {
   branches: Branch[]
   commits: Commit[]
   graph: GraphLayout | null
+  /** null = all branches (--all); otherwise the branch/ref whose history is shown. */
+  selectedRef: string | null
   selectedHash: string | null
   changedFiles: { path: string; status: string }[]
   selectedFile: string | null
   diff: string
   refresh: (repo: string) => Promise<void>
+  /** Switch the log to a branch's history (null = all branches), then reload. */
+  selectBranch: (repo: string, ref: string | null) => Promise<void>
   selectCommit: (repo: string, hash: string) => Promise<void>
   selectFile: (repo: string, file: string) => Promise<void>
 }
@@ -19,13 +23,15 @@ export const useLogStore = create<LogState>((set, get) => ({
   branches: [],
   commits: [],
   graph: null,
+  selectedRef: null,
   selectedHash: null,
   changedFiles: [],
   selectedFile: null,
   diff: '',
   refresh: async (repo) => {
+    const ref = get().selectedRef ?? undefined
     const [log, branches] = await Promise.all([
-      withToast(() => window.api.git.log(repo)) as Promise<LogResult | undefined>,
+      withToast(() => window.api.git.log(repo, undefined, ref)) as Promise<LogResult | undefined>,
       withToast(() => window.api.git.branches(repo)) as Promise<Branch[] | undefined>,
     ])
     set({
@@ -37,6 +43,10 @@ export const useLogStore = create<LogState>((set, get) => ({
       selectedFile: null,
       diff: '',
     })
+  },
+  selectBranch: async (repo, ref) => {
+    set({ selectedRef: ref })
+    await get().refresh(repo)
   },
   selectCommit: async (repo, hash) => {
     const files = (await withToast(() => window.api.git.commitFiles(repo, hash))) ?? []

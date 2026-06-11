@@ -22,8 +22,8 @@ export function registerIpc() {
   ipcMain.handle('repos:open', (_e, p: string) => addRepo(p, new Date().toISOString()))
 
   // log + graph
-  ipcMain.handle('git:log', async (_e, repo: string, limit?: number) => {
-    const commits = await getLog(repo, limit)
+  ipcMain.handle('git:log', async (_e, repo: string, limit?: number, ref?: string) => {
+    const commits = await getLog(repo, limit, ref)
     const graph = computeGraph(commits)
     return { commits, graph }
   })
@@ -32,7 +32,9 @@ export function registerIpc() {
   ipcMain.handle('git:status', (_e, repo: string) => getStatus(repo))
   ipcMain.handle('git:branches', (_e, repo: string) => getBranches(repo))
   ipcMain.handle('git:checkout', (_e, repo: string, name: string) => checkout(repo, name))
-  ipcMain.handle('git:createBranch', (_e, repo: string, name: string) => createBranch(repo, name))
+  ipcMain.handle('git:createBranch', (_e, repo: string, name: string, base?: string) =>
+    createBranch(repo, name, base),
+  )
 
   // diff
   ipcMain.handle('git:commitFiles', (_e, repo: string, hash: string) => getCommitFiles(repo, hash))

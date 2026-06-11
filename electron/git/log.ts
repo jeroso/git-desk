@@ -29,11 +29,15 @@ export function parseLog(raw: string): Commit[] {
     })
 }
 
-/** 모든 브랜치의 커밋을 날짜순으로 가져온다. limit으로 페이지네이션. */
-export async function getLog(repo: string, limit = 500): Promise<Commit[]> {
+/**
+ * 커밋을 날짜순으로 가져온다. ref가 주어지면 그 브랜치/레퍼런스의 히스토리만,
+ * 없으면 모든 브랜치(--all). limit으로 페이지네이션.
+ */
+export async function getLog(repo: string, limit = 500, ref?: string): Promise<Commit[]> {
+  const range = ref ? [ref] : ['--all']
   const raw = await git(repo, [
     'log',
-    '--all',
+    ...range,
     '--date-order',
     `--max-count=${limit}`,
     `--pretty=format:${LOG_FORMAT}`,

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
 import { getLog } from '../electron/git/log'
-import { getBranches } from '../electron/git/branch'
+import { getBranches, createBranch } from '../electron/git/branch'
 import { getStatus } from '../electron/git/status'
 
 // These hit real `git` through execFile. They guard against argv-level bugs that
@@ -48,6 +48,28 @@ describe('getBranches (real git)', () => {
     // the checked-out branch (main or master depending on git defaults) is current
     const current = branches.find((b) => b.isCurrent)
     expect(current).toBeDefined()
+  })
+})
+
+describe('getLog with a ref (real git)', () => {
+  it('shows only the given branch history, not all branches', async () => {
+    // The `feature` branch was created at `init`, before `second` was committed on main.
+    const featureLog = await getLog(repo, 500, 'feature')
+    const subjects = featureLog.map((c) => c.subject)
+    expect(subjects).toContain('init')
+    expect(subjects).not.toContain('second')
+  })
+})
+
+describe('createBranch with a base (real git)', () => {
+  it('creates a new branch based on another branch', async () => {
+    await createBranch(repo, 'from-feature', 'feature')
+    const branches = await getBranches(repo)
+    const created = branches.find((b) => b.name === 'from-feature')
+    expect(created).toBeDefined()
+    // it was based on `feature` (which is at `init`), so it must not contain `second`
+    const log = await getLog(repo, 500, 'from-feature')
+    expect(log.map((c) => c.subject)).not.toContain('second')
   })
 })
 

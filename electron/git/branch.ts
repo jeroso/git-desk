@@ -37,6 +37,14 @@ export function checkout(repo: string, name: string): Promise<string> {
   return git(repo, ['checkout', name])
 }
 
-export function createBranch(repo: string, name: string, checkoutNew = true): Promise<string> {
-  return git(repo, checkoutNew ? ['checkout', '-b', name] : ['branch', name])
+/** 새 브랜치 생성. base가 주어지면 그 브랜치/커밋을 기준으로 만든다. */
+export function createBranch(
+  repo: string,
+  name: string,
+  base?: string,
+  checkoutNew = true,
+): Promise<string> {
+  const args = checkoutNew ? ['checkout', '-b', name] : ['branch', name]
+  if (base) args.push(base)
+  return git(repo, args)
 }

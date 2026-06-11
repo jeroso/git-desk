@@ -23,7 +23,8 @@ export default function App() {
   }, [loadRecents])
 
   useEffect(() => {
-    if (current) log.refresh(current.path)
+    // New repo: reset the history filter to "all branches" and load.
+    if (current) log.selectBranch(current.path, null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.path])
 
@@ -76,9 +77,18 @@ export default function App() {
             <div className="flex-1 flex min-h-0">
               <BranchPanel
                 branches={log.branches}
+                selectedRef={log.selectedRef}
+                onSelectBranch={(ref) => log.selectBranch(repo!, ref)}
                 onCheckout={async (name) => {
                   await withToast(() => window.api.git.checkout(repo!, name))
                   log.refresh(repo!)
+                }}
+                onNewBranch={async (base) => {
+                  const name = window.prompt(`'${base}' 기준 새 브랜치 이름`)
+                  if (name) {
+                    await withToast(() => window.api.git.createBranch(repo!, name, base))
+                    log.refresh(repo!)
+                  }
                 }}
                 onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
                 onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}

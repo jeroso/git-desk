@@ -8,12 +8,13 @@ const api = {
     open: (p: string) => ipcRenderer.invoke('repos:open', p),
   },
   git: {
-    log: (repo: string, limit?: number) => ipcRenderer.invoke('git:log', repo, limit),
+    log: (repo: string, limit?: number, ref?: string) =>
+      ipcRenderer.invoke('git:log', repo, limit, ref),
     status: (repo: string) => ipcRenderer.invoke('git:status', repo),
     branches: (repo: string) => ipcRenderer.invoke('git:branches', repo),
     checkout: (repo: string, name: string) => ipcRenderer.invoke('git:checkout', repo, name),
-    createBranch: (repo: string, name: string) =>
-      ipcRenderer.invoke('git:createBranch', repo, name),
+    createBranch: (repo: string, name: string, base?: string) =>
+      ipcRenderer.invoke('git:createBranch', repo, name, base),
     commitFiles: (repo: string, hash: string) =>
       ipcRenderer.invoke('git:commitFiles', repo, hash),
     commitDiff: (repo: string, hash: string, file: string) =>
