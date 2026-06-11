@@ -1,0 +1,7 @@
+{
+  "appId": "com.songyoungwoo.gitdesk",
+  "productName": "git-desk",
+  "directories": { "output": "release" },
+  "files": ["dist", "dist-electron"],
+  "mac": { "target": "dmg" }
+}
