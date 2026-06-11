@@ -9,7 +9,10 @@ import { DiffView } from './components/DiffView'
 import { Toast } from './components/Toast'
 import { CommitView } from './components/CommitView'
 import { RemoteDialog } from './components/RemoteDialog'
+import { ConflictPanel } from './components/ConflictPanel'
+import { useConflictStore } from './store/conflictStore'
 import { withToast } from './lib/api'
+import type { FileChange } from './types'
 
 export default function App() {
   const { current, loadRecents } = useRepoStore()
@@ -27,6 +30,19 @@ export default function App() {
   const repo = current?.path
   const [tab, setTab] = useState<'log' | 'commit'>('log')
   const [showRemote, setShowRemote] = useState(false)
+  const conflict = useConflictStore()
+
+  async function runOp(
+    repoPath: string,
+    fn: () => Promise<{ ok: boolean; output: string }>,
+    op: 'merge' | 'rebase' | 'cherry-pick',
+  ) {
+    await withToast(fn)
+    const status: FileChange[] = (await withToast(() => window.api.git.status(repoPath))) ?? []
+    const conflicted = status.filter((c) => c.status === 'conflicted').map((c) => c.path)
+    if (conflicted.length > 0) conflict.open(op, conflicted)
+    log.refresh(repoPath)
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -61,8 +77,17 @@ export default function App() {
               <BranchPanel
                 branches={log.branches}
                 onCheckout={async (name) => {
-                  await window.api.git.checkout(repo, name)
-                  log.refresh(repo)
+                  await withToast(() => window.api.git.checkout(repo!, name))
+                  log.refresh(repo!)
+                }}
+                onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
+                onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}
+                onCreate={async () => {
+                  const name = window.prompt('새 브랜치 이름')
+                  if (name) {
+                    await withToast(() => window.api.git.createBranch(repo!, name))
+                    log.refresh(repo!)
+                  }
                 }}
               />
               <div className="flex-1 flex flex-col min-w-0">
@@ -90,6 +115,7 @@ export default function App() {
         </div>
       )}
       {showRemote && repo && <RemoteDialog repo={repo} onClose={() => setShowRemote(false)} />}
+      {repo && <ConflictPanel repo={repo} onDone={() => log.refresh(repo)} />}
       <Toast />
     </div>
   )
