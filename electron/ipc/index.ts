@@ -5,6 +5,7 @@ import { getStatus } from '../git/status'
 import { getBranches, checkout, createBranch } from '../git/branch'
 import { getCommitFiles, getCommitDiff, getWorktreeDiff } from '../git/diff'
 import { listRepos, addRepo, removeRepo } from '../repos/store'
+import { commit, commitAndPush } from '../git/commit'
 
 export function registerIpc() {
   // repos
@@ -37,6 +38,13 @@ export function registerIpc() {
   )
   ipcMain.handle('git:worktreeDiff', (_e, repo: string, file: string, staged: boolean) =>
     getWorktreeDiff(repo, file, staged),
+  )
+
+  ipcMain.handle('git:commit', (_e, repo: string, files: string[], msg: string) =>
+    commit(repo, files, msg),
+  )
+  ipcMain.handle('git:commitAndPush', (_e, repo: string, files: string[], msg: string) =>
+    commitAndPush(repo, files, msg),
   )
 
   // open path in external editor / file manager

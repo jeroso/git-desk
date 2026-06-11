@@ -20,6 +20,10 @@ const api = {
       ipcRenderer.invoke('git:commitDiff', repo, hash, file),
     worktreeDiff: (repo: string, file: string, staged: boolean) =>
       ipcRenderer.invoke('git:worktreeDiff', repo, file, staged),
+    commit: (repo: string, files: string[], msg: string) =>
+      ipcRenderer.invoke('git:commit', repo, files, msg),
+    commitAndPush: (repo: string, files: string[], msg: string) =>
+      ipcRenderer.invoke('git:commitAndPush', repo, files, msg),
   },
   shell: {
     openPath: (p: string) => ipcRenderer.invoke('shell:openPath', p),
