@@ -1,11 +1,15 @@
 import { git } from './exec'
 import type { Commit } from './types'
 
+// Separators in git's OUTPUT (the parser splits on these real bytes).
 const SEP = '\x00'
 const REC = '\x1e'
 
+// Format string passed to git as an ARGUMENT. We must NOT put raw NUL bytes in
+// argv (Node's execFile rejects them: ERR_INVALID_ARG_VALUE). git's pretty-format
+// placeholders %x00 / %x1e make git emit those bytes in the output instead.
 // %H hash, %P parents, %an author, %aI ISO date, %s subject, %D refs
-export const LOG_FORMAT = ['%H', '%P', '%an', '%aI', '%s', '%D'].join(SEP) + REC
+export const LOG_FORMAT = ['%H', '%P', '%an', '%aI', '%s', '%D'].join('%x00') + '%x1e'
 
 export function parseLog(raw: string): Commit[] {
   return raw

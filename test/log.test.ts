@@ -40,8 +40,11 @@ describe('parseLog', () => {
     expect(parseLog(raw)[0].refs).toEqual(['HEAD -> main', 'origin/main', 'tag: v1'])
   })
 
-  it('exposes LOG_FORMAT containing field separators', () => {
-    expect(LOG_FORMAT).toContain(SEP)
-    expect(LOG_FORMAT).toContain(REC)
+  it('uses git placeholders (not raw NUL) in LOG_FORMAT so execFile accepts it', () => {
+    // The format is an argv string passed to git; it must contain NO raw NUL byte
+    // (Node execFile rejects those). git expands %x00/%x1e to those bytes in output.
+    expect(LOG_FORMAT).not.toContain(SEP)
+    expect(LOG_FORMAT).toContain('%x00')
+    expect(LOG_FORMAT).toContain('%x1e')
   })
 })

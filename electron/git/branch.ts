@@ -2,8 +2,10 @@ import { git } from './exec'
 import type { Branch } from './types'
 
 export async function getBranches(repo: string): Promise<Branch[]> {
-  // local + remote, machine-readable
-  const fmt = '%(refname)\x00%(HEAD)\x00%(upstream:short)\x00%(upstream:track)'
+  // local + remote, machine-readable. Use git's %00 placeholder (not a raw NUL):
+  // Node's execFile rejects argv strings containing NUL bytes. git for-each-ref
+  // expands %00 to a NUL byte in the output, which we split on below.
+  const fmt = '%(refname)%00%(HEAD)%00%(upstream:short)%00%(upstream:track)'
   const raw = await git(repo, [
     'for-each-ref',
     '--format=' + fmt,
