@@ -8,6 +8,7 @@ import { listRepos, addRepo, removeRepo } from '../repos/store'
 import { commit, commitAndPush } from '../git/commit'
 import { getRemotes, setRemoteUrl, rewriteRemoteHost, fetchRemote, pull, push } from '../git/remote'
 import { readSshHosts } from '../ssh/config'
+import { mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved } from '../git/ops'
 
 export function registerIpc() {
   // repos
@@ -61,4 +62,17 @@ export function registerIpc() {
   ipcMain.handle('git:fetch', (_e, repo: string) => fetchRemote(repo))
   ipcMain.handle('git:pull', (_e, repo: string) => pull(repo))
   ipcMain.handle('git:push', (_e, repo: string) => push(repo))
+
+  ipcMain.handle('git:merge', (_e, repo: string, b: string) => mergeBranch(repo, b))
+  ipcMain.handle('git:rebase', (_e, repo: string, b: string) => rebaseOnto(repo, b))
+  ipcMain.handle('git:cherryPick', (_e, repo: string, h: string) => cherryPick(repo, h))
+  ipcMain.handle('git:continueOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
+    continueOp(repo, op),
+  )
+  ipcMain.handle('git:abortOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
+    abortOp(repo, op),
+  )
+  ipcMain.handle('git:markResolved', (_e, repo: string, files: string[]) =>
+    markResolved(repo, files),
+  )
 }
