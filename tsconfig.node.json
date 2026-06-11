@@ -9,5 +9,6 @@
     "composite": true,
     "types": ["node"]
   },
+  "_note": "Keep 'electron' in include: this node-flavored pass (lib ES2022, no DOM) is what guards main-process code against DOM-global leakage. tsconfig.json also includes electron under a DOM lib for src type-only imports, so removing it here would silently disable that guard.",
   "include": ["electron", "test", "vite.config.ts"]
 }
