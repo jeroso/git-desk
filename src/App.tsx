@@ -10,8 +10,10 @@ import { Toast } from './components/Toast'
 import { CommitView } from './components/CommitView'
 import { RemoteDialog } from './components/RemoteDialog'
 import { ConflictPanel } from './components/ConflictPanel'
+import { PromptDialog } from './components/PromptDialog'
 import { useConflictStore } from './store/conflictStore'
-import { withToast } from './lib/api'
+import { withToast, notify, useToast } from './lib/api'
+import { ask } from './lib/prompt'
 import type { FileChange } from './types'
 
 export default function App() {
@@ -38,10 +40,16 @@ export default function App() {
     fn: () => Promise<{ ok: boolean; output: string }>,
     op: 'merge' | 'rebase' | 'cherry-pick',
   ) {
-    await withToast(fn)
+    const res = await withToast(fn)
     const status: FileChange[] = (await withToast(() => window.api.git.status(repoPath))) ?? []
     const conflicted = status.filter((c) => c.status === 'conflicted').map((c) => c.path)
-    if (conflicted.length > 0) conflict.open(op, conflicted)
+    if (conflicted.length > 0) {
+      conflict.open(op, conflicted)
+    } else if (res && !res.ok) {
+      useToast.getState().show(res.output) // failed, but not a conflict (e.g. nothing to do)
+    } else if (res && res.ok) {
+      notify(`${op} 완료`)
+    }
     log.refresh(repoPath)
   }
 
@@ -50,9 +58,23 @@ export default function App() {
       <TopBar
         onRefresh={() => repo && log.refresh(repo)}
         onOpenRemote={() => setShowRemote(true)}
-        onFetch={async () => { if (repo) { await withToast(() => window.api.git.fetch(repo)); log.refresh(repo) } }}
-        onPull={async () => { if (repo) { await withToast(() => window.api.git.pull(repo)); log.refresh(repo) } }}
-        onPush={async () => { if (repo) await withToast(() => window.api.git.push(repo)) }}
+        onFetch={async () => {
+          if (!repo) return
+          const out = await withToast(() => window.api.git.fetch(repo))
+          if (out !== undefined) notify('가져오기 완료 (fetch)')
+          log.refresh(repo)
+        }}
+        onPull={async () => {
+          if (!repo) return
+          const out = await withToast(() => window.api.git.pull(repo))
+          if (out !== undefined) notify(out.trim() || '이미 최신입니다')
+          log.refresh(repo)
+        }}
+        onPush={async () => {
+          if (!repo) return
+          const out = await withToast(() => window.api.git.push(repo))
+          if (out !== undefined) notify(out.trim() || '푸시 완료')
+        }}
       />
       {!repo ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">
@@ -84,18 +106,20 @@ export default function App() {
                   log.refresh(repo!)
                 }}
                 onNewBranch={async (base) => {
-                  const name = window.prompt(`'${base}' 기준 새 브랜치 이름`)
+                  const name = await ask(`'${base}' 기준 새 브랜치 이름`)
                   if (name) {
                     await withToast(() => window.api.git.createBranch(repo!, name, base))
+                    notify(`브랜치 '${name}' 생성됨`)
                     log.refresh(repo!)
                   }
                 }}
                 onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
                 onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}
                 onCreate={async () => {
-                  const name = window.prompt('새 브랜치 이름')
+                  const name = await ask('새 브랜치 이름')
                   if (name) {
                     await withToast(() => window.api.git.createBranch(repo!, name))
+                    notify(`브랜치 '${name}' 생성됨`)
                     log.refresh(repo!)
                   }
                 }}
@@ -127,6 +151,7 @@ export default function App() {
       )}
       {showRemote && repo && <RemoteDialog repo={repo} onClose={() => setShowRemote(false)} />}
       {repo && <ConflictPanel repo={repo} onDone={() => log.refresh(repo)} />}
+      <PromptDialog />
       <Toast />
     </div>
   )

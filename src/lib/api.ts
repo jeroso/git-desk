@@ -1,14 +1,20 @@
 import { create } from 'zustand'
 
+export type ToastKind = 'error' | 'info'
+
 interface ToastState {
   message: string | null
-  show: (msg: string) => void
+  kind: ToastKind
+  show: (msg: string, kind?: ToastKind) => void
+  info: (msg: string) => void
   clear: () => void
 }
 
 export const useToast = create<ToastState>((set) => ({
   message: null,
-  show: (message) => set({ message }),
+  kind: 'error',
+  show: (message, kind = 'error') => set({ message, kind }),
+  info: (message) => set({ message, kind: 'info' }),
   clear: () => set({ message: null }),
 }))
 
@@ -20,4 +26,9 @@ export async function withToast<T>(fn: () => Promise<T>): Promise<T | undefined>
     useToast.getState().show(err instanceof Error ? err.message : String(err))
     return undefined
   }
+}
+
+/** 성공/정보 알림. (실패는 withToast가 처리) */
+export function notify(message: string) {
+  useToast.getState().info(message)
 }
