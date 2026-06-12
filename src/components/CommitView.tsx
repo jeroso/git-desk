@@ -22,21 +22,21 @@ export function CommitView({ repo }: { repo: string }) {
 
   return (
     <div className="flex-1 flex min-h-0">
-      <div className="w-96 border-r flex flex-col text-xs">
-        <div className="px-2 py-1 border-b flex items-center gap-2">
+      <div className="w-96 border-r dark:border-neutral-700 flex flex-col text-xs">
+        <div className="px-2 py-1 border-b dark:border-neutral-700 flex items-center gap-2">
           <input
             type="checkbox"
             checked={allChecked}
             onChange={(e) => s.toggleAll(e.target.checked)}
           />
-          <span className="text-gray-500">Changes ({s.changes.length})</span>
+          <span className="text-gray-500 dark:text-neutral-400">Changes ({s.changes.length})</span>
         </div>
         <div className="flex-1 overflow-auto">
           {s.changes.map((c) => (
             <div
               key={c.path}
               className={`flex items-center gap-2 px-2 py-0.5 ${
-                c.path === s.selectedFile ? 'bg-blue-100' : 'hover:bg-gray-100'
+                c.path === s.selectedFile ? 'bg-blue-100 dark:bg-blue-500/30' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
               }`}
             >
               <input
@@ -48,18 +48,18 @@ export function CommitView({ repo }: { repo: string }) {
                 className="flex-1 text-left flex gap-2 truncate"
                 onClick={() => s.selectFile(repo, c.path, c.staged)}
               >
-                <span className="text-gray-500 w-3">{STATUS_LABEL[c.status]}</span>
+                <span className="text-gray-500 dark:text-neutral-400 w-3">{STATUS_LABEL[c.status]}</span>
                 <span className="truncate">{c.path}</span>
               </button>
             </div>
           ))}
         </div>
-        <div className="border-t p-2 space-y-2">
+        <div className="border-t dark:border-neutral-700 p-2 space-y-2">
           <textarea
             value={s.message}
             onChange={(e) => s.setMessage(e.target.value)}
             placeholder="커밋 메시지..."
-            className="w-full h-20 border rounded p-2 resize-none"
+            className="w-full h-20 border rounded p-2 resize-none dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
           />
           <div className="flex gap-2">
             <button

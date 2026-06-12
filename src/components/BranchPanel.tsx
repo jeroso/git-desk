@@ -71,23 +71,23 @@ export function BranchPanel({
   const sectionProps = { selectedRef, onSelectBranch, onCheckout, onContextMenu: openMenu }
 
   return (
-    <div className="w-full h-full border-r flex flex-col text-xs">
+    <div className="w-full h-full border-r dark:border-neutral-700 flex flex-col text-xs">
       <div className="flex gap-1 m-2">
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="🔍 branch filter"
-          className="flex-1 px-2 py-1 border rounded min-w-0"
+          className="flex-1 px-2 py-1 border rounded min-w-0 dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
         />
-        <button onClick={onCreate} className="border rounded px-2 hover:bg-gray-100" title="새 브랜치">
+        <button onClick={onCreate} className="border dark:border-neutral-600 rounded px-2 hover:bg-gray-100 dark:hover:bg-neutral-800 dark:text-neutral-200" title="새 브랜치">
           +
         </button>
       </div>
       <div className="overflow-auto flex-1">
         <button
           onClick={() => onSelectBranch(null)}
-          className={`w-full text-left px-2 py-0.5 flex items-center gap-1 hover:bg-gray-100 ${
-            selectedRef === null ? 'bg-blue-100 font-semibold' : ''
+          className={`w-full text-left px-2 py-0.5 flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-neutral-800 ${
+            selectedRef === null ? 'bg-blue-100 dark:bg-blue-500/30 font-semibold' : ''
           }`}
         >
           <span className="w-3 text-center">✱</span>
@@ -150,9 +150,9 @@ function Section({ title, branches, expandAll, ...rowProps }: SectionProps) {
           <button
             onClick={() => toggle(n.fullName)}
             style={{ paddingLeft: depth * 12 + 8 }}
-            className="w-full text-left flex items-center gap-1 py-0.5 pr-2 text-gray-600 hover:bg-gray-100"
+            className="w-full text-left flex items-center gap-1 py-0.5 pr-2 text-gray-600 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
           >
-            <span className="w-3 text-gray-400">{isCollapsed ? '▸' : '▾'}</span>
+            <span className="w-3 text-gray-400 dark:text-neutral-500">{isCollapsed ? '▸' : '▾'}</span>
             <span className="truncate">{n.segment}</span>
           </button>
           {!isCollapsed && (
@@ -169,7 +169,7 @@ function Section({ title, branches, expandAll, ...rowProps }: SectionProps) {
 
   return (
     <div className="py-1">
-      <div className="text-gray-400 uppercase text-[10px] mb-1 px-2">{title}</div>
+      <div className="text-gray-400 dark:text-neutral-500 uppercase text-[10px] mb-1 px-2">{title}</div>
       {renderNodes([...tree.children.values()], 0)}
     </div>
   )
@@ -199,8 +199,8 @@ function BranchRow({
       onDoubleClick={() => !b.isRemote && onCheckout(b.name)}
       onContextMenu={(e) => onContextMenu(e, b)}
       style={{ paddingLeft: depth * 12 + 8 }}
-      className={`pr-2 py-0.5 rounded cursor-default flex items-center gap-1 hover:bg-gray-100 ${
-        isViewed ? 'bg-blue-100' : ''
+      className={`pr-2 py-0.5 rounded cursor-default flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-neutral-800 ${
+        isViewed ? 'bg-blue-100 dark:bg-blue-500/30' : ''
       } ${b.isCurrent ? 'font-semibold text-blue-700' : ''}`}
       title={b.isRemote ? b.name : 'click: 히스토리 보기 · double-click: checkout'}
     >

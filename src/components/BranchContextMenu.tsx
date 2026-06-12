@@ -38,7 +38,7 @@ export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={ref}
-        className="fixed z-50 bg-white border rounded shadow-lg text-xs py-1 w-56"
+        className="fixed z-50 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded shadow-lg text-xs py-1 w-56"
         style={{ left: pos.x, top: pos.y }}
       >
         {items.map((it) => (
@@ -49,7 +49,7 @@ export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }
               onAction(it.key)
               onClose()
             }}
-            className="block w-full text-left px-3 py-1 hover:bg-gray-100 disabled:opacity-40"
+            className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-neutral-700 dark:text-neutral-200 disabled:opacity-40"
           >
             {it.label}
           </button>

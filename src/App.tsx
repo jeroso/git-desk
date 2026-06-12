@@ -84,18 +84,18 @@ export default function App() {
         }}
       />
       {!repo ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-neutral-500">
           저장소를 추가하세요
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex gap-1 px-2 pt-1 text-xs border-b">
+          <div className="flex gap-1 px-2 pt-1 text-xs border-b dark:border-neutral-700">
             {(['log', 'commit'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className={`px-3 py-1 rounded-t ${
-                  tab === t ? 'bg-gray-100 font-semibold' : 'text-gray-500'
+                  tab === t ? 'bg-gray-100 dark:bg-neutral-800 font-semibold' : 'text-gray-500 dark:text-neutral-400'
                 }`}
               >
                 {t === 'log' ? 'Log' : 'Commit'}

@@ -88,7 +88,11 @@ export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPi
           {commits.map((c, row) => {
             const isActive = c.hash === selectedHash
             const inSelection = selected.has(c.hash)
-            const bg = isActive ? 'bg-blue-100' : inSelection ? 'bg-blue-50' : 'hover:bg-gray-100'
+            const bg = isActive
+              ? 'bg-blue-100 dark:bg-blue-500/30'
+              : inSelection
+                ? 'bg-blue-50 dark:bg-blue-500/15'
+                : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
             return (
               <button
                 key={c.hash}
@@ -100,15 +104,15 @@ export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPi
                 {c.refs.length > 0 && (
                   <span className="flex gap-1">
                     {c.refs.map((r) => (
-                      <span key={r} className="text-[10px] bg-amber-200 rounded px-1">
+                      <span key={r} className="text-[10px] bg-amber-200 dark:bg-amber-700 dark:text-amber-100 rounded px-1">
                         {r}
                       </span>
                     ))}
                   </span>
                 )}
                 <span className="flex-1 truncate" title={c.subject}>{c.subject}</span>
-                <span className="text-gray-500 w-20 truncate">{c.author}</span>
-                <span className="text-gray-400 w-16 text-right">{c.dateISO.slice(0, 10)}</span>
+                <span className="text-gray-500 dark:text-neutral-400 w-20 truncate">{c.author}</span>
+                <span className="text-gray-400 dark:text-neutral-500 w-16 text-right">{c.dateISO.slice(0, 10)}</span>
               </button>
             )
           })}

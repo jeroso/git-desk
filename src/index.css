@@ -3,4 +3,5 @@
 @tailwind utilities;
 
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: -apple-system, system-ui, sans-serif; font-size: 13px; }
+body { background: #ffffff; font-family: -apple-system, system-ui, sans-serif; font-size: 13px; }
+html.dark, html.dark body { background: #171717; color: #e5e5e5; }

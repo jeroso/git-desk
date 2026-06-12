@@ -16,27 +16,27 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40">
-      <div className="bg-white rounded-lg shadow-xl w-[32rem] p-4 text-xs space-y-3">
+      <div className="bg-white dark:bg-neutral-800 dark:text-neutral-100 rounded-lg shadow-xl w-[32rem] p-4 text-xs space-y-3">
         <div className="font-semibold text-sm text-red-600">
           충돌 발생 — {op} 중 ({files.length} files)
         </div>
         {files.length === 0 && (
-          <div className="text-gray-500">
+          <div className="text-gray-500 dark:text-neutral-400">
             남은 충돌이 없습니다. "계속"을 눌러 {op}을(를) 마무리하세요.
           </div>
         )}
-        <div className="border rounded divide-y max-h-60 overflow-auto">
+        <div className="border dark:border-neutral-700 rounded divide-y dark:divide-neutral-700 max-h-60 overflow-auto">
           {files.map((f) => (
             <div key={f} className="flex items-center gap-2 px-2 py-1">
               <span className="flex-1 font-mono truncate">{f}</span>
               <button
-                className="border rounded px-2 py-0.5 hover:bg-gray-100"
+                className="border dark:border-neutral-600 rounded px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-neutral-700"
                 onClick={() => window.api.shell.openPath(`${repo}/${f}`)}
               >
                 에디터에서 열기
               </button>
               <button
-                className="border rounded px-2 py-0.5 hover:bg-gray-100"
+                className="border dark:border-neutral-600 rounded px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-neutral-700"
                 onClick={async () => {
                   await withToast(() => window.api.git.markResolved(repo, [f]))
                   await refreshConflicts()
@@ -54,7 +54,7 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
               close()
               onDone()
             }}
-            className="border rounded px-3 py-1"
+            className="border dark:border-neutral-600 rounded px-3 py-1"
           >
             중단 (abort)
           </button>
