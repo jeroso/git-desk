@@ -11,10 +11,13 @@ import { CommitView } from './components/CommitView'
 import { RemoteDialog } from './components/RemoteDialog'
 import { ConflictPanel } from './components/ConflictPanel'
 import { PromptDialog } from './components/PromptDialog'
+import { Splitter } from './components/Splitter'
 import { useConflictStore } from './store/conflictStore'
 import { withToast, notify, useToast } from './lib/api'
 import { ask } from './lib/prompt'
 import type { FileChange } from './types'
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 export default function App() {
   const { current, loadRecents } = useRepoStore()
@@ -33,6 +36,10 @@ export default function App() {
   const repo = current?.path
   const [tab, setTab] = useState<'log' | 'commit'>('log')
   const [showRemote, setShowRemote] = useState(false)
+  // Resizable pane sizes (px). Drag the splitters between panes to adjust.
+  const [branchW, setBranchW] = useState(224)
+  const [filesW, setFilesW] = useState(288)
+  const [diffH, setDiffH] = useState(256)
   const conflict = useConflictStore()
 
   async function runOp(
@@ -97,51 +104,73 @@ export default function App() {
           </div>
           {tab === 'log' ? (
             <div className="flex-1 flex min-h-0">
-              <BranchPanel
-                branches={log.branches}
-                selectedRef={log.selectedRef}
-                onSelectBranch={(ref) => log.selectBranch(repo!, ref)}
-                onCheckout={async (name) => {
-                  await withToast(() => window.api.git.checkout(repo!, name))
-                  log.refresh(repo!)
-                }}
-                onNewBranch={async (base) => {
-                  const name = await ask(`'${base}' 기준 새 브랜치 이름`)
-                  if (name) {
-                    await withToast(() => window.api.git.createBranch(repo!, name, base))
-                    notify(`브랜치 '${name}' 생성됨`)
+              <div style={{ width: branchW }} className="shrink-0 h-full">
+                <BranchPanel
+                  branches={log.branches}
+                  selectedRef={log.selectedRef}
+                  onSelectBranch={(ref) => log.selectBranch(repo!, ref)}
+                  onCheckout={async (name) => {
+                    await withToast(() => window.api.git.checkout(repo!, name))
                     log.refresh(repo!)
-                  }
-                }}
-                onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
-                onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}
-                onCreate={async () => {
-                  const name = await ask('새 브랜치 이름')
-                  if (name) {
-                    await withToast(() => window.api.git.createBranch(repo!, name))
-                    notify(`브랜치 '${name}' 생성됨`)
-                    log.refresh(repo!)
-                  }
-                }}
+                  }}
+                  onNewBranch={async (base) => {
+                    const name = await ask(`'${base}' 기준 새 브랜치 이름`)
+                    if (name) {
+                      await withToast(() => window.api.git.createBranch(repo!, name, base))
+                      notify(`브랜치 '${name}' 생성됨`)
+                      log.refresh(repo!)
+                    }
+                  }}
+                  onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
+                  onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}
+                  onCreate={async () => {
+                    const name = await ask('새 브랜치 이름')
+                    if (name) {
+                      await withToast(() => window.api.git.createBranch(repo!, name))
+                      notify(`브랜치 '${name}' 생성됨`)
+                      log.refresh(repo!)
+                    }
+                  }}
+                />
+              </div>
+              <Splitter
+                orientation="vertical"
+                onDrag={(d) => setBranchW((w) => clamp(w + d, 140, 500))}
               />
               <div className="flex-1 flex flex-col min-w-0">
                 <div className="flex-1 flex min-h-0">
-                  {log.graph && (
-                    <CommitGraph
-                      commits={log.commits}
-                      graph={log.graph}
-                      selectedHash={log.selectedHash}
-                      onSelect={(h) => log.selectCommit(repo, h)}
-                      onCherryPick={(hashes) => runOp(repo!, () => window.api.git.cherryPick(repo!, hashes), 'cherry-pick')}
-                    />
-                  )}
-                  <ChangedFiles
-                    files={log.changedFiles}
-                    selectedFile={log.selectedFile}
-                    onSelect={(f) => log.selectFile(repo, f)}
+                  <div className="flex-1 flex min-w-0 min-h-0">
+                    {log.graph && (
+                      <CommitGraph
+                        commits={log.commits}
+                        graph={log.graph}
+                        selectedHash={log.selectedHash}
+                        onSelect={(h) => log.selectCommit(repo, h)}
+                        onCherryPick={(hashes) =>
+                          runOp(repo!, () => window.api.git.cherryPick(repo!, hashes), 'cherry-pick')
+                        }
+                      />
+                    )}
+                  </div>
+                  <Splitter
+                    orientation="vertical"
+                    onDrag={(d) => setFilesW((w) => clamp(w - d, 160, 600))}
                   />
+                  <div style={{ width: filesW }} className="shrink-0 h-full">
+                    <ChangedFiles
+                      files={log.changedFiles}
+                      selectedFile={log.selectedFile}
+                      onSelect={(f) => log.selectFile(repo, f)}
+                    />
+                  </div>
                 </div>
-                <DiffView file={log.selectedFile} diff={log.diff} />
+                <Splitter
+                  orientation="horizontal"
+                  onDrag={(d) => setDiffH((h) => clamp(h - d, 80, 600))}
+                />
+                <div style={{ height: diffH }} className="shrink-0">
+                  <DiffView file={log.selectedFile} diff={log.diff} />
+                </div>
               </div>
             </div>
           ) : (

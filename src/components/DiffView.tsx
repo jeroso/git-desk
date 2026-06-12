@@ -12,7 +12,7 @@ function lineClass(line: string): string {
 
 export function DiffView({ file, diff }: Props) {
   return (
-    <div className="h-64 border-t flex flex-col">
+    <div className="h-full border-t flex flex-col">
       <div className="text-gray-500 text-xs px-2 py-1 border-b flex justify-between">
         <span>DIFF {file ? `— ${file}` : ''}</span>
         <span className="text-gray-300">통합 ⇄ 좌우 (v2)</span>

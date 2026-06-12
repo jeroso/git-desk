@@ -106,7 +106,7 @@ export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPi
                     ))}
                   </span>
                 )}
-                <span className="flex-1 truncate">{c.subject}</span>
+                <span className="flex-1 truncate" title={c.subject}>{c.subject}</span>
                 <span className="text-gray-500 w-20 truncate">{c.author}</span>
                 <span className="text-gray-400 w-16 text-right">{c.dateISO.slice(0, 10)}</span>
               </button>

@@ -71,7 +71,7 @@ export function BranchPanel({
   const sectionProps = { selectedRef, onSelectBranch, onCheckout, onContextMenu: openMenu }
 
   return (
-    <div className="w-56 border-r flex flex-col text-xs">
+    <div className="w-full h-full border-r flex flex-col text-xs">
       <div className="flex gap-1 m-2">
         <input
           value={filter}

@@ -13,7 +13,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function ChangedFiles({ files, selectedFile, onSelect }: Props) {
   return (
-    <div className="w-72 border-l overflow-auto text-xs">
+    <div className="w-full h-full border-l overflow-auto text-xs">
       <div className="text-gray-400 uppercase text-[10px] px-2 py-1">Changed Files</div>
       {files.map((f) => {
         const code = f.status[0]
@@ -26,7 +26,7 @@ export function ChangedFiles({ files, selectedFile, onSelect }: Props) {
             }`}
           >
             <span className={STATUS_COLOR[code] ?? 'text-gray-500'}>{code}</span>
-            <span className="truncate flex-1">{f.path}</span>
+            <span className="truncate flex-1" title={f.path}>{f.path}</span>
           </button>
         )
       })}
