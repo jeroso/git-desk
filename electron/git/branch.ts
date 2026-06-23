@@ -38,6 +38,12 @@ export async function getBranches(repo: string): Promise<Branch[]> {
  * 그 원격을 추적하는 로컬 브랜치("staging")로 전환한다(없으면 DWIM으로 생성).
  * 로컬에 동일 이름 브랜치가 이미 있으면 단순히 그 브랜치로 전환된다.
  */
+/** 현재 체크아웃된 브랜치 이름. detached HEAD면 "HEAD"를 돌려준다. */
+export async function currentBranch(repo: string): Promise<string> {
+  const out = await git(repo, ['rev-parse', '--abbrev-ref', 'HEAD'])
+  return out.trim()
+}
+
 export function checkout(repo: string, name: string, isRemote = false): Promise<string> {
   if (isRemote) {
     // strip the remote name (first path segment): "origin/feature/x" -> "feature/x"

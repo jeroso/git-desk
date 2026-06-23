@@ -3,13 +3,13 @@ import { openDiffWindow } from './diffWindow'
 import { getLog } from '../git/log'
 import { computeGraph } from '../git/graph'
 import { getStatus } from '../git/status'
-import { getBranches, checkout, createBranch, deleteBranch } from '../git/branch'
+import { getBranches, checkout, createBranch, deleteBranch, currentBranch } from '../git/branch'
 import { getCommitFiles, getCommitDiff, getWorktreeDiff } from '../git/diff'
 import { listRepos, addRepo, removeRepo } from '../repos/store'
 import { commit, commitAndPush } from '../git/commit'
 import { getRemotes, setRemoteUrl, rewriteRemoteHost, fetchRemote, pull, push, pushBranch, updateBranch } from '../git/remote'
 import { readSshHosts } from '../ssh/config'
-import { mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved } from '../git/ops'
+import { mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved, rollback } from '../git/ops'
 
 export function registerIpc() {
   // repos
@@ -32,6 +32,7 @@ export function registerIpc() {
   // status / branches
   ipcMain.handle('git:status', (_e, repo: string) => getStatus(repo))
   ipcMain.handle('git:branches', (_e, repo: string) => getBranches(repo))
+  ipcMain.handle('git:currentBranch', (_e, repo: string) => currentBranch(repo))
   ipcMain.handle('git:checkout', (_e, repo: string, name: string, isRemote?: boolean) =>
     checkout(repo, name, isRemote),
   )
@@ -92,5 +93,8 @@ export function registerIpc() {
   )
   ipcMain.handle('git:markResolved', (_e, repo: string, files: string[]) =>
     markResolved(repo, files),
+  )
+  ipcMain.handle('git:rollback', (_e, repo: string, files: { path: string; status: string }[]) =>
+    rollback(repo, files),
   )
 }

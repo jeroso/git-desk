@@ -31,9 +31,24 @@ export function CommitView({ repo }: { repo: string }) {
 
   const allChecked = s.changes.length > 0 && s.checked.size === s.changes.length
 
+  const rollback = (paths: string[]) => {
+    if (paths.length === 0) return
+    const label =
+      paths.length === 1 ? `'${paths[0]}'` : `선택한 ${paths.length}개 파일`
+    if (window.confirm(`${label}의 변경을 되돌릴까요? (커밋되지 않은 변경이 사라집니다)`)) {
+      s.rollback(repo, paths)
+    }
+  }
+
   return (
     <div className="flex-1 flex min-h-0">
       <div className="w-96 border-r dark:border-neutral-700 flex flex-col text-xs">
+        <div className="px-2 py-1 border-b dark:border-neutral-700 flex items-center gap-1 text-gray-600 dark:text-neutral-300">
+          <span title="현재 브랜치">⎇</span>
+          <span className="font-semibold truncate" title={`현재 브랜치: ${s.branch}`}>
+            {s.branch || '(detached)'}
+          </span>
+        </div>
         <div className="px-2 py-1 border-b dark:border-neutral-700 flex items-center gap-2">
           <input
             type="checkbox"
@@ -41,12 +56,20 @@ export function CommitView({ repo }: { repo: string }) {
             onChange={(e) => s.toggleAll(e.target.checked)}
           />
           <span className="text-gray-500 dark:text-neutral-400">Changes ({s.changes.length})</span>
+          <button
+            onClick={() => rollback([...s.checked])}
+            disabled={s.checked.size === 0}
+            title="선택한 파일의 변경 되돌리기 (Rollback)"
+            className="ml-auto px-1.5 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 disabled:opacity-30"
+          >
+            ↩ Rollback
+          </button>
         </div>
         <div className="flex-1 overflow-auto">
           {s.changes.map((c) => (
             <div
               key={c.path}
-              className={`flex items-center gap-2 px-2 py-0.5 ${
+              className={`group flex items-center gap-2 px-2 py-0.5 ${
                 c.path === s.selectedFile ? 'bg-blue-100 dark:bg-blue-500/30' : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
               }`}
             >
@@ -63,6 +86,13 @@ export function CommitView({ repo }: { repo: string }) {
                   {STATUS_LABEL[c.status]}
                 </span>
                 <span className={`truncate ${STATUS_COLOR[c.status] ?? ''}`}>{c.path}</span>
+              </button>
+              <button
+                onClick={() => rollback([c.path])}
+                title="이 파일 변경 되돌리기 (Rollback)"
+                className="opacity-0 group-hover:opacity-100 px-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+              >
+                ↩
               </button>
             </div>
           ))}

@@ -12,6 +12,7 @@ const api = {
       ipcRenderer.invoke('git:log', repo, limit, ref),
     status: (repo: string) => ipcRenderer.invoke('git:status', repo),
     branches: (repo: string) => ipcRenderer.invoke('git:branches', repo),
+    currentBranch: (repo: string) => ipcRenderer.invoke('git:currentBranch', repo),
     checkout: (repo: string, name: string, isRemote?: boolean) =>
       ipcRenderer.invoke('git:checkout', repo, name, isRemote),
     createBranch: (repo: string, name: string, base?: string) =>
@@ -48,6 +49,8 @@ const api = {
       ipcRenderer.invoke('git:abortOp', repo, op),
     markResolved: (repo: string, files: string[]) =>
       ipcRenderer.invoke('git:markResolved', repo, files),
+    rollback: (repo: string, files: { path: string; status: string }[]) =>
+      ipcRenderer.invoke('git:rollback', repo, files),
   },
   ssh: {
     hosts: () => ipcRenderer.invoke('ssh:hosts'),

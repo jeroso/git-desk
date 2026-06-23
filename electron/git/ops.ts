@@ -35,3 +35,31 @@ export function abortOp(repo: string, op: 'merge' | 'rebase' | 'cherry-pick') {
 export function markResolved(repo: string, files: string[]) {
   return git(repo, ['add', '--', ...files])
 }
+
+/**
+ * 커밋되지 않은 변경을 되돌린다(IntelliJ "Rollback").
+ * - untracked: 디스크에서 삭제(clean)
+ * - added(스테이징된 새 파일): index+worktree에서 제거(rm -f)
+ * - 그 외(modified/deleted/renamed): HEAD 상태로 복원
+ * 파일마다 처리하며, 일부 실패해도 나머지는 계속 진행하고 마지막에 에러를 모아 던진다.
+ */
+export async function rollback(
+  repo: string,
+  files: { path: string; status: string }[],
+): Promise<void> {
+  const errors: string[] = []
+  for (const f of files) {
+    try {
+      if (f.status === 'untracked') {
+        await git(repo, ['clean', '-f', '-d', '--', f.path])
+      } else if (f.status === 'added') {
+        await git(repo, ['rm', '-f', '--', f.path])
+      } else {
+        await git(repo, ['checkout', 'HEAD', '--', f.path])
+      }
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err))
+    }
+  }
+  if (errors.length) throw new Error(errors.join('\n'))
+}
