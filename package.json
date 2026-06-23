@@ -2,6 +2,8 @@
   "name": "git-desk",
   "version": "0.1.0",
   "description": "IntelliJ-style desktop git client",
+  "author": "jeroso",
+  "repository": "github:jeroso/git-desk",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
