@@ -18,7 +18,8 @@ function createWindow() {
 
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
-    win.webContents.openDevTools()
+    // DevTools no longer auto-opens; toggle it manually with ⌥⌘I (or set OPEN_DEVTOOLS=1).
+    if (process.env.OPEN_DEVTOOLS) win.webContents.openDevTools()
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'))
   }

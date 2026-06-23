@@ -1,15 +1,18 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
+type Action = 'checkout' | 'newBranch' | 'merge' | 'rebase' | 'update' | 'push' | 'delete'
+
 interface Props {
   x: number
   y: number
   branch: string
   isCurrent: boolean
+  isRemote: boolean
   onClose: () => void
-  onAction: (action: 'checkout' | 'newBranch' | 'merge' | 'rebase') => void
+  onAction: (action: Action) => void
 }
 
-export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }: Props) {
+export function BranchContextMenu({ x, y, branch, isCurrent, isRemote, onClose, onAction }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   // Start at the click point; clamp into the viewport after we can measure the menu.
   const [pos, setPos] = useState({ x, y })
@@ -27,11 +30,27 @@ export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }
     setPos({ x: nx, y: ny })
   }, [x, y])
 
-  const items: { key: 'checkout' | 'newBranch' | 'merge' | 'rebase'; label: string }[] = [
-    { key: 'checkout', label: `Checkout '${branch}'` },
+  // `divider: true` renders a separator instead of a button.
+  const items: ({ key: Action; label: string; disabled?: boolean } | { divider: true })[] = [
+    { key: 'checkout', label: `Checkout '${branch}'`, disabled: isCurrent },
     { key: 'newBranch', label: `New branch from '${branch}'…` },
+    { divider: true },
     { key: 'merge', label: `Merge '${branch}' into current` },
     { key: 'rebase', label: `Rebase current onto '${branch}'` },
+    // Push / Update only make sense for local branches.
+    ...(isRemote
+      ? []
+      : ([
+          { divider: true },
+          { key: 'update', label: `Update '${branch}'` },
+          { key: 'push', label: `Push '${branch}'` },
+        ] as const)),
+    { divider: true },
+    {
+      key: 'delete',
+      label: isRemote ? `Delete remote '${branch}'…` : `Delete '${branch}'…`,
+      disabled: isCurrent,
+    },
   ]
   return (
     <>
@@ -41,19 +60,23 @@ export function BranchContextMenu({ x, y, branch, isCurrent, onClose, onAction }
         className="fixed z-50 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded shadow-lg text-xs py-1 w-56"
         style={{ left: pos.x, top: pos.y }}
       >
-        {items.map((it) => (
-          <button
-            key={it.key}
-            disabled={it.key === 'checkout' && isCurrent}
-            onClick={() => {
-              onAction(it.key)
-              onClose()
-            }}
-            className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-neutral-700 dark:text-neutral-200 disabled:opacity-40"
-          >
-            {it.label}
-          </button>
-        ))}
+        {items.map((it, i) =>
+          'divider' in it ? (
+            <div key={`d${i}`} className="my-1 border-t dark:border-neutral-700" />
+          ) : (
+            <button
+              key={it.key}
+              disabled={it.disabled}
+              onClick={() => {
+                onAction(it.key)
+                onClose()
+              }}
+              className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-neutral-700 dark:text-neutral-200 disabled:opacity-40"
+            >
+              {it.label}
+            </button>
+          ),
+        )}
       </div>
     </>
   )

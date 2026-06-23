@@ -19,7 +19,7 @@ export function Toast() {
       className={`fixed bottom-4 right-4 max-w-md ${color} text-white text-xs rounded px-3 py-2 shadow-lg z-[60]`}
     >
       <div className="flex items-start gap-2">
-        <pre className="whitespace-pre-wrap flex-1">{message}</pre>
+        <pre className="whitespace-pre-wrap flex-1 max-h-40 overflow-auto">{message}</pre>
         <button onClick={clear} className="opacity-80 hover:opacity-100">
           ✕
         </button>

@@ -41,3 +41,18 @@ export function pull(repo: string): Promise<string> {
 export function push(repo: string): Promise<string> {
   return git(repo, ['push'])
 }
+
+/** 특정 브랜치를 origin에 푸시한다. (현재 체크아웃 여부와 무관) */
+export function pushBranch(repo: string, branch: string): Promise<string> {
+  return git(repo, ['push', 'origin', branch])
+}
+
+/**
+ * 브랜치를 원격 기준으로 업데이트(IntelliJ "Update")한다.
+ * - 현재 브랜치: 평범한 pull
+ * - 그 외 로컬 브랜치: 체크아웃 없이 fast-forward로 로컬 ref를 갱신
+ */
+export function updateBranch(repo: string, branch: string, isCurrent: boolean): Promise<string> {
+  if (isCurrent) return git(repo, ['pull'])
+  return git(repo, ['fetch', 'origin', `${branch}:${branch}`])
+}

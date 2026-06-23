@@ -29,11 +29,20 @@ export const useLogStore = create<LogState>((set, get) => ({
   selectedFile: null,
   diff: '',
   refresh: async (repo) => {
-    const ref = get().selectedRef ?? undefined
-    const [log, branches] = await Promise.all([
-      withToast(() => window.api.git.log(repo, undefined, ref)) as Promise<LogResult | undefined>,
-      withToast(() => window.api.git.branches(repo)) as Promise<Branch[] | undefined>,
-    ])
+    let ref = get().selectedRef ?? undefined
+    let log = (await withToast(() =>
+      window.api.git.log(repo, undefined, ref),
+    )) as LogResult | undefined
+    // The filtered ref may have vanished (branch deleted / remote pruned). Fall
+    // back to all branches instead of leaving the log permanently broken.
+    if (log === undefined && ref !== undefined) {
+      ref = undefined
+      set({ selectedRef: null })
+      log = (await withToast(() => window.api.git.log(repo, undefined, undefined))) as
+        | LogResult
+        | undefined
+    }
+    const branches = (await withToast(() => window.api.git.branches(repo))) as Branch[] | undefined
     set({
       commits: log?.commits ?? [],
       graph: log?.graph ?? null,

@@ -6,10 +6,13 @@ interface Props {
   branches: Branch[]
   selectedRef: string | null
   onSelectBranch: (ref: string | null) => void
-  onCheckout: (name: string) => void
+  onCheckout: (name: string, isRemote: boolean) => void
   onNewBranch: (base: string) => void
   onMerge: (name: string) => void
   onRebase: (name: string) => void
+  onUpdate: (name: string, isCurrent: boolean) => void
+  onPush: (name: string) => void
+  onDelete: (name: string, isRemote: boolean) => void
   onCreate: () => void
 }
 
@@ -50,6 +53,9 @@ export function BranchPanel({
   onNewBranch,
   onMerge,
   onRebase,
+  onUpdate,
+  onPush,
+  onDelete,
   onCreate,
 }: Props) {
   const [filter, setFilter] = useState('')
@@ -102,12 +108,16 @@ export function BranchPanel({
           y={menu.y}
           branch={menu.b.name}
           isCurrent={menu.b.isCurrent}
+          isRemote={menu.b.isRemote}
           onClose={() => setMenu(null)}
           onAction={(a) => {
-            if (a === 'checkout') onCheckout(menu.b.name)
+            if (a === 'checkout') onCheckout(menu.b.name, menu.b.isRemote)
             else if (a === 'newBranch') onNewBranch(menu.b.name)
             else if (a === 'merge') onMerge(menu.b.name)
             else if (a === 'rebase') onRebase(menu.b.name)
+            else if (a === 'update') onUpdate(menu.b.name, menu.b.isCurrent)
+            else if (a === 'push') onPush(menu.b.name)
+            else if (a === 'delete') onDelete(menu.b.name, menu.b.isRemote)
           }}
         />
       )}
@@ -121,7 +131,7 @@ interface SectionProps {
   expandAll: boolean
   selectedRef: string | null
   onSelectBranch: (ref: string | null) => void
-  onCheckout: (name: string) => void
+  onCheckout: (name: string, isRemote: boolean) => void
   onContextMenu: (e: React.MouseEvent, b: Branch) => void
 }
 
@@ -189,20 +199,24 @@ function BranchRow({
   depth: number
   selectedRef: string | null
   onSelectBranch: (ref: string | null) => void
-  onCheckout: (name: string) => void
+  onCheckout: (name: string, isRemote: boolean) => void
   onContextMenu: (e: React.MouseEvent, b: Branch) => void
 }) {
   const isViewed = b.name === selectedRef
   return (
     <div
       onClick={() => onSelectBranch(b.name)}
-      onDoubleClick={() => !b.isRemote && onCheckout(b.name)}
+      onDoubleClick={() => onCheckout(b.name, b.isRemote)}
       onContextMenu={(e) => onContextMenu(e, b)}
       style={{ paddingLeft: depth * 12 + 8 }}
       className={`pr-2 py-0.5 rounded cursor-default flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-neutral-800 ${
         isViewed ? 'bg-blue-100 dark:bg-blue-500/30' : ''
       } ${b.isCurrent ? 'font-semibold text-blue-700' : ''}`}
-      title={b.isRemote ? b.name : 'click: 히스토리 보기 · double-click: checkout'}
+      title={
+        b.isRemote
+          ? `${b.name}\nclick: 히스토리 보기 · double-click: 로컬로 체크아웃(추적 브랜치 생성)`
+          : 'click: 히스토리 보기 · double-click: checkout'
+      }
     >
       <span className="w-3 text-center">{b.isCurrent ? '●' : '○'}</span>
       <span className="truncate flex-1">{label}</span>

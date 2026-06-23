@@ -1,3 +1,5 @@
+import { cleanDiff } from '../lib/diff'
+
 interface Props {
   file: string | null
   diff: string
@@ -18,7 +20,7 @@ export function DiffView({ file, diff }: Props) {
         <span className="text-gray-300 dark:text-neutral-500">통합 ⇄ 좌우 (v2)</span>
       </div>
       <pre className="flex-1 overflow-auto text-xs font-mono leading-tight">
-        {diff.split('\n').map((line, i) => (
+        {cleanDiff(diff).split('\n').map((line, i) => (
           <div key={i} className={`px-2 ${lineClass(line)}`}>
             {line || ' '}
           </div>

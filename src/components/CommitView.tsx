@@ -11,6 +11,17 @@ const STATUS_LABEL: Record<string, string> = {
   conflicted: 'U',
 }
 
+// IntelliJ-style colors: modified=blue, added/untracked=green,
+// deleted=grey strikethrough, renamed=teal, conflicted=red.
+const STATUS_COLOR: Record<string, string> = {
+  modified: 'text-blue-600 dark:text-blue-400',
+  added: 'text-green-600 dark:text-green-400',
+  untracked: 'text-green-600 dark:text-green-400',
+  deleted: 'text-gray-400 line-through dark:text-neutral-500',
+  renamed: 'text-teal-600 dark:text-teal-400',
+  conflicted: 'text-red-600 dark:text-red-400',
+}
+
 export function CommitView({ repo }: { repo: string }) {
   const s = useCommitStore()
   useEffect(() => {
@@ -48,8 +59,10 @@ export function CommitView({ repo }: { repo: string }) {
                 className="flex-1 text-left flex gap-2 truncate"
                 onClick={() => s.selectFile(repo, c.path, c.staged)}
               >
-                <span className="text-gray-500 dark:text-neutral-400 w-3">{STATUS_LABEL[c.status]}</span>
-                <span className="truncate">{c.path}</span>
+                <span className={`w-3 ${STATUS_COLOR[c.status] ?? 'text-gray-500 dark:text-neutral-400'}`}>
+                  {STATUS_LABEL[c.status]}
+                </span>
+                <span className={`truncate ${STATUS_COLOR[c.status] ?? ''}`}>{c.path}</span>
               </button>
             </div>
           ))}

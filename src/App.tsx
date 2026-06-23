@@ -15,9 +15,21 @@ import { Splitter } from './components/Splitter'
 import { useConflictStore } from './store/conflictStore'
 import { withToast, notify, useToast } from './lib/api'
 import { ask } from './lib/prompt'
+import { cleanDiff } from './lib/diff'
 import type { FileChange } from './types'
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+/** git pull/fetch 출력을 한 줄 요약으로 줄인다 (전체 출력으로 화면을 덮지 않도록). */
+function summarizeUpdate(out: string): string {
+  if (/already up to date/i.test(out)) return '이미 최신입니다'
+  const stat = out.match(/\d+ files? changed[^\n]*/i)
+  if (stat) return stat[0].trim()
+  const updating = out.match(/Updating\s+[0-9a-f]+\.\.[0-9a-f]+/i)
+  if (updating) return `${updating[0]} 업데이트 완료`
+  if (/Fast-forward/i.test(out)) return 'Fast-forward 업데이트 완료'
+  return '업데이트 완료'
+}
 
 export default function App() {
   const { current, loadRecents } = useRepoStore()
@@ -74,7 +86,7 @@ export default function App() {
         onPull={async () => {
           if (!repo) return
           const out = await withToast(() => window.api.git.pull(repo))
-          if (out !== undefined) notify(out.trim() || '이미 최신입니다')
+          if (out !== undefined) notify(summarizeUpdate(out))
           log.refresh(repo)
         }}
         onPush={async () => {
@@ -109,8 +121,11 @@ export default function App() {
                   branches={log.branches}
                   selectedRef={log.selectedRef}
                   onSelectBranch={(ref) => log.selectBranch(repo!, ref)}
-                  onCheckout={async (name) => {
-                    await withToast(() => window.api.git.checkout(repo!, name))
+                  onCheckout={async (name, isRemote) => {
+                    const out = await withToast(() => window.api.git.checkout(repo!, name, isRemote))
+                    if (out !== undefined && isRemote) {
+                      notify(`'${name.replace(/^[^/]+\//, '')}' 로컬 브랜치로 체크아웃됨`)
+                    }
                     log.refresh(repo!)
                   }}
                   onNewBranch={async (base) => {
@@ -123,6 +138,42 @@ export default function App() {
                   }}
                   onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
                   onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}
+                  onUpdate={async (name, isCurrent) => {
+                    const out = await withToast(() => window.api.git.updateBranch(repo!, name, isCurrent))
+                    if (out !== undefined) notify(`'${name}' ${summarizeUpdate(out)}`)
+                    log.refresh(repo!)
+                  }}
+                  onPush={async (name) => {
+                    const out = await withToast(() => window.api.git.pushBranch(repo!, name))
+                    if (out !== undefined) notify(`'${name}' 푸시 완료`)
+                    log.refresh(repo!)
+                  }}
+                  onDelete={async (name, isRemote) => {
+                    const what = isRemote ? `원격 브랜치 '${name}'` : `브랜치 '${name}'`
+                    if (!window.confirm(`${what}를 삭제할까요?`)) return
+                    try {
+                      await window.api.git.deleteBranch(repo!, name, false)
+                      notify(`${what} 삭제됨`)
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e)
+                      // 병합되지 않은 로컬 브랜치: 강제 삭제 여부를 한 번 더 확인.
+                      if (!isRemote && /not fully merged/i.test(msg)) {
+                        if (window.confirm(`'${name}'가 병합되지 않았습니다. 강제 삭제할까요?`)) {
+                          const out = await withToast(() => window.api.git.deleteBranch(repo!, name, true))
+                          if (out !== undefined) notify(`${what} 강제 삭제됨`)
+                        }
+                      } else {
+                        useToast.getState().show(msg)
+                      }
+                    }
+                    // 방금 지운 브랜치를 로그 필터로 보고 있었다면 '전체 브랜치'로 되돌린다
+                    // (없는 리비전으로 git log를 돌려 터지는 것을 방지).
+                    if (useLogStore.getState().selectedRef === name) {
+                      await log.selectBranch(repo!, null)
+                    } else {
+                      log.refresh(repo!)
+                    }
+                  }}
                   onCreate={async () => {
                     const name = await ask('새 브랜치 이름')
                     if (name) {
@@ -161,6 +212,13 @@ export default function App() {
                       files={log.changedFiles}
                       selectedFile={log.selectedFile}
                       onSelect={(f) => log.selectFile(repo, f)}
+                      onOpenWindow={async (f) => {
+                        const hash = log.selectedHash
+                        if (!repo || !hash) return
+                        const diff =
+                          (await withToast(() => window.api.git.commitDiff(repo, hash, f))) ?? ''
+                        await withToast(() => window.api.git.openDiffWindow(f, cleanDiff(diff)))
+                      }}
                     />
                   </div>
                 </div>
