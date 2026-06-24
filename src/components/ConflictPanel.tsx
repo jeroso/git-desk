@@ -14,15 +14,23 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
     return conflicted
   }
 
+  // checkout 모드: `git checkout -m`이 남긴 충돌. continue/commit 개념이 없고,
+  // 사용자가 파일을 해결한 뒤 닫으면 변경은 작업트리에 그대로 남는다.
+  const isCheckout = op === 'checkout'
+  // abort/continue를 갖는 op만 추린다 (checkout 분기에서만 사용하므로 안전).
+  const resumeOp = op as 'merge' | 'rebase' | 'cherry-pick'
+
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40">
       <div className="bg-white dark:bg-neutral-800 dark:text-neutral-100 rounded-lg shadow-xl w-[32rem] p-4 text-xs space-y-3">
         <div className="font-semibold text-sm text-red-600">
-          충돌 발생 — {op} 중 ({files.length} files)
+          {isCheckout ? '체크아웃 머지 충돌' : `충돌 발생 — ${op} 중`} ({files.length} files)
         </div>
         {files.length === 0 && (
           <div className="text-gray-500 dark:text-neutral-400">
-            남은 충돌이 없습니다. "계속"을 눌러 {op}을(를) 마무리하세요.
+            {isCheckout
+              ? '남은 충돌이 없습니다. "완료"를 눌러 닫으세요. (변경은 작업트리에 유지됩니다)'
+              : `남은 충돌이 없습니다. "계속"을 눌러 ${op}을(를) 마무리하세요.`}
           </div>
         )}
         <div className="border dark:border-neutral-700 rounded divide-y dark:divide-neutral-700 max-h-60 overflow-auto">
@@ -48,33 +56,47 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
           ))}
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button
-            onClick={async () => {
-              await withToast(() => window.api.git.abortOp(repo, op))
-              close()
-              onDone()
-            }}
-            className="border dark:border-neutral-600 rounded px-3 py-1"
-          >
-            중단 (abort)
-          </button>
-          <button
-            onClick={async () => {
-              const res = await withToast(() => window.api.git.continueOp(repo, op))
-              if (!res) return // withToast가 에러를 잡은 경우(드묾)
-              if (res.ok) {
+          {isCheckout ? (
+            <button
+              onClick={() => {
                 close()
                 onDone()
-              } else {
-                // continue 실패 — 충돌이 남아있음. 출력 노출 + 목록 갱신, 패널 유지.
-                useToast.getState().show(res.output)
-                await refreshConflicts()
-              }
-            }}
-            className="bg-blue-600 text-white rounded px-3 py-1"
-          >
-            계속 (continue)
-          </button>
+              }}
+              className="bg-blue-600 text-white rounded px-3 py-1"
+            >
+              완료
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={async () => {
+                  await withToast(() => window.api.git.abortOp(repo, resumeOp))
+                  close()
+                  onDone()
+                }}
+                className="border dark:border-neutral-600 rounded px-3 py-1"
+              >
+                중단 (abort)
+              </button>
+              <button
+                onClick={async () => {
+                  const res = await withToast(() => window.api.git.continueOp(repo, resumeOp))
+                  if (!res) return // withToast가 에러를 잡은 경우(드묾)
+                  if (res.ok) {
+                    close()
+                    onDone()
+                  } else {
+                    // continue 실패 — 충돌이 남아있음. 출력 노출 + 목록 갱신, 패널 유지.
+                    useToast.getState().show(res.output)
+                    await refreshConflicts()
+                  }
+                }}
+                className="bg-blue-600 text-white rounded px-3 py-1"
+              >
+                계속 (continue)
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

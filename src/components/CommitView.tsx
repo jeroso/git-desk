@@ -55,7 +55,12 @@ export function CommitView({ repo }: { repo: string }) {
             checked={allChecked}
             onChange={(e) => s.toggleAll(e.target.checked)}
           />
-          <span className="text-gray-500 dark:text-neutral-400">Changes ({s.changes.length})</span>
+          <span
+            className="text-gray-500 dark:text-neutral-400"
+            title="Shift+클릭: 범위 선택 · ⌘/Ctrl+클릭: 개별 토글"
+          >
+            Changes ({s.changes.length})
+          </span>
           <button
             onClick={() => rollback([...s.checked])}
             disabled={s.checked.size === 0}
@@ -80,7 +85,12 @@ export function CommitView({ repo }: { repo: string }) {
               />
               <button
                 className="flex-1 text-left flex gap-2 truncate"
-                onClick={() => s.selectFile(repo, c.path, c.staged)}
+                onClick={(e) => {
+                  // Shift+클릭=범위 선택, Cmd/Ctrl+클릭=토글, 일반 클릭=diff 보기.
+                  if (e.shiftKey) s.selectRange(c.path)
+                  else if (e.metaKey || e.ctrlKey) s.toggle(c.path)
+                  else s.selectFile(repo, c.path, c.staged)
+                }}
               >
                 <span className={`w-3 ${STATUS_COLOR[c.status] ?? 'text-gray-500 dark:text-neutral-400'}`}>
                   {STATUS_LABEL[c.status]}

@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import type { FileChange } from '../types'
 import { withToast } from '../lib/api'
+import { rangeBetween } from '../lib/select'
 
 interface CommitState {
   changes: FileChange[]
   checked: Set<string>
+  /** 마지막으로 단일 선택한 경로. Shift 범위 선택의 기준점(anchor). */
+  anchor: string | null
   branch: string
   message: string
   selectedFile: string | null
@@ -12,6 +15,8 @@ interface CommitState {
   refresh: (repo: string) => Promise<void>
   toggle: (path: string) => void
   toggleAll: (on: boolean) => void
+  /** Shift+클릭: anchor~path 구간을 모두 체크 표시에 추가한다. */
+  selectRange: (path: string) => void
   setMessage: (m: string) => void
   selectFile: (repo: string, path: string, staged: boolean) => Promise<void>
   doCommit: (repo: string, push: boolean) => Promise<boolean>
@@ -22,6 +27,7 @@ interface CommitState {
 export const useCommitStore = create<CommitState>((set, get) => ({
   changes: [],
   checked: new Set(),
+  anchor: null,
   branch: '',
   message: '',
   selectedFile: null,
@@ -34,19 +40,27 @@ export const useCommitStore = create<CommitState>((set, get) => ({
     const list = changes ?? []
     // default: check everything that's tracked (not untracked)
     const checked = new Set<string>(list.filter((c) => c.status !== 'untracked').map((c) => c.path))
-    set({ changes: list, branch: branch ?? '', checked, selectedFile: null, diff: '' })
+    set({ changes: list, branch: branch ?? '', checked, anchor: null, selectedFile: null, diff: '' })
   },
   toggle: (path) => {
     const checked = new Set(get().checked)
     if (checked.has(path)) checked.delete(path)
     else checked.add(path)
-    set({ checked })
+    set({ checked, anchor: path })
   },
   toggleAll: (on) => {
-    set({ checked: on ? new Set(get().changes.map((c) => c.path)) : new Set() })
+    set({ checked: on ? new Set(get().changes.map((c) => c.path)) : new Set(), anchor: null })
+  },
+  selectRange: (path) => {
+    const paths = get().changes.map((c) => c.path)
+    const range = rangeBetween(paths, get().anchor, path)
+    const checked = new Set(get().checked)
+    for (const p of range) checked.add(p)
+    set({ checked })
   },
   setMessage: (message) => set({ message }),
   selectFile: async (repo, path, staged) => {
+    set({ anchor: path })
     const diff = (await withToast(() => window.api.git.worktreeDiff(repo, path, staged))) ?? ''
     set({ selectedFile: path, diff })
   },

@@ -10,6 +10,7 @@ import { Toast } from './components/Toast'
 import { CommitView } from './components/CommitView'
 import { RemoteDialog } from './components/RemoteDialog'
 import { ConflictPanel } from './components/ConflictPanel'
+import { CheckoutConflictDialog } from './components/CheckoutConflictDialog'
 import { PromptDialog } from './components/PromptDialog'
 import { Splitter } from './components/Splitter'
 import { useConflictStore } from './store/conflictStore'
@@ -52,12 +53,14 @@ export default function App() {
   const [branchW, setBranchW] = useState(224)
   const [filesW, setFilesW] = useState(288)
   const [diffH, setDiffH] = useState(256)
+  // 일반 체크아웃이 로컬 변경 충돌로 거부됐을 때 띄울 선택 다이얼로그 대상.
+  const [checkoutConflict, setCheckoutConflict] = useState<{ name: string; isRemote: boolean } | null>(null)
   const conflict = useConflictStore()
 
   async function runOp(
     repoPath: string,
     fn: () => Promise<{ ok: boolean; output: string }>,
-    op: 'merge' | 'rebase' | 'cherry-pick',
+    op: 'merge' | 'rebase' | 'cherry-pick' | 'checkout',
   ) {
     const res = await withToast(fn)
     const status: FileChange[] = (await withToast(() => window.api.git.status(repoPath))) ?? []
@@ -67,7 +70,7 @@ export default function App() {
     } else if (res && !res.ok) {
       useToast.getState().show(res.output) // failed, but not a conflict (e.g. nothing to do)
     } else if (res && res.ok) {
-      notify(`${op} 완료`)
+      notify(op === 'checkout' ? '스마트 체크아웃 완료' : `${op} 완료`)
     }
     log.refresh(repoPath)
   }
@@ -122,11 +125,19 @@ export default function App() {
                   selectedRef={log.selectedRef}
                   onSelectBranch={(ref) => log.selectBranch(repo!, ref)}
                   onCheckout={async (name, isRemote) => {
-                    const out = await withToast(() => window.api.git.checkout(repo!, name, isRemote))
-                    if (out !== undefined && isRemote) {
-                      notify(`'${name.replace(/^[^/]+\//, '')}' 로컬 브랜치로 체크아웃됨`)
+                    try {
+                      await window.api.git.checkout(repo!, name, isRemote)
+                      if (isRemote) notify(`'${name.replace(/^[^/]+\//, '')}' 로컬 브랜치로 체크아웃됨`)
+                      log.refresh(repo!)
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e)
+                      // 커밋되지 않은 로컬 변경 때문에 거부된 경우: 스마트/강제 선택 다이얼로그.
+                      if (/would be overwritten by checkout|commit your changes or stash/i.test(msg)) {
+                        setCheckoutConflict({ name, isRemote })
+                      } else {
+                        useToast.getState().show(msg)
+                      }
                     }
-                    log.refresh(repo!)
                   }}
                   onNewBranch={async (base) => {
                     const name = await ask(`'${base}' 기준 새 브랜치 이름`)
@@ -138,8 +149,8 @@ export default function App() {
                   }}
                   onMerge={(name) => runOp(repo!, () => window.api.git.merge(repo!, name), 'merge')}
                   onRebase={(name) => runOp(repo!, () => window.api.git.rebase(repo!, name), 'rebase')}
-                  onUpdate={async (name, isCurrent) => {
-                    const out = await withToast(() => window.api.git.updateBranch(repo!, name, isCurrent))
+                  onUpdate={async (name) => {
+                    const out = await withToast(() => window.api.git.updateBranch(repo!, name))
                     if (out !== undefined) notify(`'${name}' ${summarizeUpdate(out)}`)
                     log.refresh(repo!)
                   }}
@@ -152,14 +163,14 @@ export default function App() {
                     const what = isRemote ? `원격 브랜치 '${name}'` : `브랜치 '${name}'`
                     if (!window.confirm(`${what}를 삭제할까요?`)) return
                     try {
-                      await window.api.git.deleteBranch(repo!, name, false)
+                      await window.api.git.deleteBranch(repo!, name, isRemote, false)
                       notify(`${what} 삭제됨`)
                     } catch (e) {
                       const msg = e instanceof Error ? e.message : String(e)
                       // 병합되지 않은 로컬 브랜치: 강제 삭제 여부를 한 번 더 확인.
                       if (!isRemote && /not fully merged/i.test(msg)) {
                         if (window.confirm(`'${name}'가 병합되지 않았습니다. 강제 삭제할까요?`)) {
-                          const out = await withToast(() => window.api.git.deleteBranch(repo!, name, true))
+                          const out = await withToast(() => window.api.git.deleteBranch(repo!, name, false, true))
                           if (out !== undefined) notify(`${what} 강제 삭제됨`)
                         }
                       } else {
@@ -238,6 +249,30 @@ export default function App() {
       )}
       {showRemote && repo && <RemoteDialog repo={repo} onClose={() => setShowRemote(false)} />}
       {repo && <ConflictPanel repo={repo} onDone={() => log.refresh(repo)} />}
+      {checkoutConflict && repo && (
+        <CheckoutConflictDialog
+          branch={checkoutConflict.name}
+          onCancel={() => setCheckoutConflict(null)}
+          onSmart={() => {
+            const cc = checkoutConflict
+            setCheckoutConflict(null)
+            runOp(repo, () => window.api.git.smartCheckout(repo, cc.name, cc.isRemote), 'checkout')
+          }}
+          onForce={async () => {
+            const cc = checkoutConflict
+            setCheckoutConflict(null)
+            if (
+              !window.confirm(
+                `'${cc.name}'로 강제 체크아웃하면 커밋되지 않은 로컬 변경이 사라집니다. 계속할까요?`,
+              )
+            )
+              return
+            const out = await withToast(() => window.api.git.checkout(repo, cc.name, cc.isRemote, true))
+            if (out !== undefined) notify(`'${cc.name}' 체크아웃됨 (강제)`)
+            log.refresh(repo)
+          }}
+        />
+      )}
       <PromptDialog />
       <Toast />
     </div>

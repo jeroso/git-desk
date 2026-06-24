@@ -10,7 +10,7 @@ interface Props {
   onNewBranch: (base: string) => void
   onMerge: (name: string) => void
   onRebase: (name: string) => void
-  onUpdate: (name: string, isCurrent: boolean) => void
+  onUpdate: (name: string) => void
   onPush: (name: string) => void
   onDelete: (name: string, isRemote: boolean) => void
   onCreate: () => void
@@ -115,7 +115,7 @@ export function BranchPanel({
             else if (a === 'newBranch') onNewBranch(menu.b.name)
             else if (a === 'merge') onMerge(menu.b.name)
             else if (a === 'rebase') onRebase(menu.b.name)
-            else if (a === 'update') onUpdate(menu.b.name, menu.b.isCurrent)
+            else if (a === 'update') onUpdate(menu.b.name)
             else if (a === 'push') onPush(menu.b.name)
             else if (a === 'delete') onDelete(menu.b.name, menu.b.isRemote)
           }}

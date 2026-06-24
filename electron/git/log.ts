@@ -41,6 +41,11 @@ export async function getLog(repo: string, limit = 500, ref?: string): Promise<C
     '--date-order',
     `--max-count=${limit}`,
     `--pretty=format:${LOG_FORMAT}`,
+    // Trailing '--' tells git everything before it is a revision, nothing a path.
+    // Without it, a branch whose name collides with a worktree path (e.g. a "test"
+    // branch next to a "test/" dir) fails with "ambiguous argument ... both
+    // revision and filename".
+    '--',
   ])
   return parseLog(raw)
 }

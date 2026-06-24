@@ -1,4 +1,5 @@
 import { git } from './exec'
+import { localName } from './branch'
 
 /** 작업을 시도하고, 성공이든 충돌이든 throw하지 않고 결과를 돌려준다. */
 async function tryOp(repo: string, args: string[]): Promise<{ ok: boolean; output: string }> {
@@ -21,6 +22,16 @@ export function rebaseOnto(repo: string, branch: string) {
 /** 하나 이상의 커밋을 순서대로 cherry-pick한다 (호출부가 oldest→newest 순서로 전달). */
 export function cherryPick(repo: string, hashes: string[]) {
   return tryOp(repo, ['cherry-pick', ...hashes])
+}
+
+/**
+ * 스마트 체크아웃(IntelliJ "Smart checkout"). `git checkout -m`으로 현재 브랜치·작업트리·
+ * 대상 브랜치의 3-way 머지를 수행해 커밋되지 않은 로컬 변경을 대상 브랜치로 가져간다.
+ * 깔끔하게 머지되면 ok=true, 충돌이 나면 대상 브랜치로 전환된 채 작업트리에 충돌 마커가
+ * 남고 ok=false를 돌려준다(throw하지 않음). 호출부가 status로 충돌 파일을 확인한다.
+ */
+export function smartCheckout(repo: string, name: string, isRemote = false) {
+  return tryOp(repo, ['checkout', '-m', localName(name, isRemote)])
 }
 
 // 충돌 후 진행/중단

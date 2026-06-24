@@ -9,7 +9,7 @@ import { listRepos, addRepo, removeRepo } from '../repos/store'
 import { commit, commitAndPush } from '../git/commit'
 import { getRemotes, setRemoteUrl, rewriteRemoteHost, fetchRemote, pull, push, pushBranch, updateBranch } from '../git/remote'
 import { readSshHosts } from '../ssh/config'
-import { mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved, rollback } from '../git/ops'
+import { mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved, rollback, smartCheckout } from '../git/ops'
 
 export function registerIpc() {
   // repos
@@ -33,14 +33,17 @@ export function registerIpc() {
   ipcMain.handle('git:status', (_e, repo: string) => getStatus(repo))
   ipcMain.handle('git:branches', (_e, repo: string) => getBranches(repo))
   ipcMain.handle('git:currentBranch', (_e, repo: string) => currentBranch(repo))
-  ipcMain.handle('git:checkout', (_e, repo: string, name: string, isRemote?: boolean) =>
-    checkout(repo, name, isRemote),
+  ipcMain.handle('git:checkout', (_e, repo: string, name: string, isRemote?: boolean, force?: boolean) =>
+    checkout(repo, name, isRemote, force),
+  )
+  ipcMain.handle('git:smartCheckout', (_e, repo: string, name: string, isRemote?: boolean) =>
+    smartCheckout(repo, name, isRemote),
   )
   ipcMain.handle('git:createBranch', (_e, repo: string, name: string, base?: string) =>
     createBranch(repo, name, base),
   )
-  ipcMain.handle('git:deleteBranch', (_e, repo: string, name: string, force?: boolean) =>
-    deleteBranch(repo, name, force),
+  ipcMain.handle('git:deleteBranch', (_e, repo: string, name: string, isRemote?: boolean, force?: boolean) =>
+    deleteBranch(repo, name, isRemote, force),
   )
 
   // diff
@@ -72,8 +75,8 @@ export function registerIpc() {
   ipcMain.handle('git:pull', (_e, repo: string) => pull(repo))
   ipcMain.handle('git:push', (_e, repo: string) => push(repo))
   ipcMain.handle('git:pushBranch', (_e, repo: string, branch: string) => pushBranch(repo, branch))
-  ipcMain.handle('git:updateBranch', (_e, repo: string, branch: string, isCurrent: boolean) =>
-    updateBranch(repo, branch, isCurrent),
+  ipcMain.handle('git:updateBranch', (_e, repo: string, branch: string) =>
+    updateBranch(repo, branch),
   )
 
   // open a file's diff in a separate, lightweight window

@@ -13,12 +13,14 @@ const api = {
     status: (repo: string) => ipcRenderer.invoke('git:status', repo),
     branches: (repo: string) => ipcRenderer.invoke('git:branches', repo),
     currentBranch: (repo: string) => ipcRenderer.invoke('git:currentBranch', repo),
-    checkout: (repo: string, name: string, isRemote?: boolean) =>
-      ipcRenderer.invoke('git:checkout', repo, name, isRemote),
+    checkout: (repo: string, name: string, isRemote?: boolean, force?: boolean) =>
+      ipcRenderer.invoke('git:checkout', repo, name, isRemote, force),
+    smartCheckout: (repo: string, name: string, isRemote?: boolean) =>
+      ipcRenderer.invoke('git:smartCheckout', repo, name, isRemote),
     createBranch: (repo: string, name: string, base?: string) =>
       ipcRenderer.invoke('git:createBranch', repo, name, base),
-    deleteBranch: (repo: string, name: string, force?: boolean) =>
-      ipcRenderer.invoke('git:deleteBranch', repo, name, force),
+    deleteBranch: (repo: string, name: string, isRemote?: boolean, force?: boolean) =>
+      ipcRenderer.invoke('git:deleteBranch', repo, name, isRemote, force),
     commitFiles: (repo: string, hash: string) =>
       ipcRenderer.invoke('git:commitFiles', repo, hash),
     commitDiff: (repo: string, hash: string, file: string) =>
@@ -36,8 +38,8 @@ const api = {
     pull: (repo: string) => ipcRenderer.invoke('git:pull', repo),
     push: (repo: string) => ipcRenderer.invoke('git:push', repo),
     pushBranch: (repo: string, branch: string) => ipcRenderer.invoke('git:pushBranch', repo, branch),
-    updateBranch: (repo: string, branch: string, isCurrent: boolean) =>
-      ipcRenderer.invoke('git:updateBranch', repo, branch, isCurrent),
+    updateBranch: (repo: string, branch: string) =>
+      ipcRenderer.invoke('git:updateBranch', repo, branch),
     openDiffWindow: (title: string, diff: string) =>
       ipcRenderer.invoke('git:openDiffWindow', title, diff),
     merge: (repo: string, b: string) => ipcRenderer.invoke('git:merge', repo, b),

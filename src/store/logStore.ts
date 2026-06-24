@@ -8,6 +8,8 @@ interface LogState {
   graph: GraphLayout | null
   /** null = all branches (--all); otherwise the branch/ref whose history is shown. */
   selectedRef: string | null
+  /** 현재 체크아웃된 로컬 브랜치 이름. detached HEAD면 null. */
+  currentBranch: string | null
   selectedHash: string | null
   changedFiles: { path: string; status: string }[]
   selectedFile: string | null
@@ -24,6 +26,7 @@ export const useLogStore = create<LogState>((set, get) => ({
   commits: [],
   graph: null,
   selectedRef: null,
+  currentBranch: null,
   selectedHash: null,
   changedFiles: [],
   selectedFile: null,
@@ -47,6 +50,7 @@ export const useLogStore = create<LogState>((set, get) => ({
       commits: log?.commits ?? [],
       graph: log?.graph ?? null,
       branches: branches ?? [],
+      currentBranch: branches?.find((b) => b.isCurrent)?.name ?? null,
       selectedHash: null,
       changedFiles: [],
       selectedFile: null,
