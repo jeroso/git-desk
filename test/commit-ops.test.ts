@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
 import { getStatus } from '../electron/git/status'
-import { resetTo, undoCommit, revertCommits, isPushed } from '../electron/git/ops'
+import { resetTo, undoCommit, revertCommits, isPushed, abortOp } from '../electron/git/ops'
 
 let repo: string
 
@@ -67,6 +67,13 @@ describe('undoCommit', () => {
     expect(await rev('HEAD')).toBe(B)
     expect(await git(repo, ['diff', '--cached', '--name-only'])).toContain('c.txt')
   })
+  it('undoes multiple tip commits when given the oldest one', async () => {
+    await undoCommit(repo, B) // B^ = A
+    expect(await rev('HEAD')).toBe(A)
+    const staged = await git(repo, ['diff', '--cached', '--name-only'])
+    expect(staged).toContain('b.txt')
+    expect(staged).toContain('c.txt')
+  })
 })
 
 describe('revertCommits', () => {
@@ -83,6 +90,28 @@ describe('revertCommits', () => {
     expect(tree).toContain('a.txt')
     expect(tree).not.toContain('b.txt')
     expect(tree).not.toContain('c.txt')
+  })
+  it('aborts a conflicted revert via abortOp("revert")', async () => {
+    const r2 = await mkdtemp(path.join(tmpdir(), 'gitdesk-reva-'))
+    try {
+      await git(r2, ['init', '-q'])
+      await git(r2, ['config', 'user.email', 't@t.com'])
+      await git(r2, ['config', 'user.name', 't'])
+      await git(r2, ['config', 'commit.gpgsign', 'false'])
+      await writeFile(path.join(r2, 'f.txt'), 'A\n'); await git(r2, ['add', '-A']); await git(r2, ['commit', '-q', '-m', 'c1'])
+      await writeFile(path.join(r2, 'f.txt'), 'B\n'); await git(r2, ['commit', '-aq', '-m', 'c2'])
+      const c2 = (await git(r2, ['rev-parse', 'HEAD'])).trim()
+      await writeFile(path.join(r2, 'f.txt'), 'C\n'); await git(r2, ['commit', '-aq', '-m', 'c3'])
+      const head = (await git(r2, ['rev-parse', 'HEAD'])).trim()
+      const res = await revertCommits(r2, [c2])
+      expect(res.ok).toBe(false)
+      const abort = await abortOp(r2, 'revert')
+      expect(abort.ok).toBe(true)
+      expect((await getStatus(r2)).filter((s) => s.status === 'conflicted').length).toBe(0)
+      expect((await git(r2, ['rev-parse', 'HEAD'])).trim()).toBe(head)
+    } finally {
+      await rm(r2, { recursive: true, force: true })
+    }
   })
   it('returns ok:false and leaves a conflict when revert cannot apply cleanly', async () => {
     const r2 = await mkdtemp(path.join(tmpdir(), 'gitdesk-revc-'))
