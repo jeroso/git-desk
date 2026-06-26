@@ -100,9 +100,9 @@ export function MergeView({ repo, file, onClose, onResolved }: Props) {
           <span className="text-gray-500 dark:text-neutral-400">남은 충돌 {remaining}개</span>
         </div>
         <div className="grid grid-cols-3 text-[11px] font-semibold text-center border-b dark:border-neutral-700">
-          <div className="py-1 text-green-700 dark:text-green-400">내 것 · {parsed.oursLabel}</div>
-          <div className="py-1">결과</div>
-          <div className="py-1 text-blue-700 dark:text-blue-400">그쪽 · {parsed.theirsLabel}</div>
+          <div className="py-1 text-green-700 dark:text-green-400">Local · {parsed.oursLabel}</div>
+          <div className="py-1">Result</div>
+          <div className="py-1 text-blue-700 dark:text-blue-400">Remote · {parsed.theirsLabel}</div>
         </div>
         <div className="grid grid-cols-3 flex-1 overflow-auto font-mono leading-tight">
           {parsed.segments.flatMap((seg: ConflictSeg, si: number) => {
@@ -132,19 +132,19 @@ export function MergeView({ repo, file, onClose, onResolved }: Props) {
                       className="border dark:border-neutral-600 rounded px-1 hover:bg-gray-100 dark:hover:bg-neutral-800"
                       onClick={() => setRes(idx, seg.ours.join('\n'))}
                     >
-                      ◀ 내 것
+                      Use Local
                     </button>
                     <button
                       className="border dark:border-neutral-600 rounded px-1 hover:bg-gray-100 dark:hover:bg-neutral-800"
                       onClick={() => setRes(idx, [...seg.ours, ...seg.theirs].join('\n'))}
                     >
-                      둘 다
+                      Both
                     </button>
                     <button
                       className="border dark:border-neutral-600 rounded px-1 hover:bg-gray-100 dark:hover:bg-neutral-800"
                       onClick={() => setRes(idx, seg.theirs.join('\n'))}
                     >
-                      그쪽 것 ▶
+                      Use Remote
                     </button>
                   </div>
                   <textarea
