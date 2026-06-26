@@ -60,7 +60,8 @@ export default function App() {
   async function runOp(
     repoPath: string,
     fn: () => Promise<{ ok: boolean; output: string }>,
-    op: 'merge' | 'rebase' | 'cherry-pick' | 'checkout',
+    op: 'merge' | 'rebase' | 'cherry-pick' | 'checkout' | 'revert',
+    label?: string,
   ) {
     const res = await withToast(fn)
     const status: FileChange[] = (await withToast(() => window.api.git.status(repoPath))) ?? []
@@ -68,9 +69,9 @@ export default function App() {
     if (conflicted.length > 0) {
       conflict.open(op, conflicted)
     } else if (res && !res.ok) {
-      useToast.getState().show(res.output) // failed, but not a conflict (e.g. nothing to do)
+      useToast.getState().show(res.output)
     } else if (res && res.ok) {
-      notify(op === 'checkout' ? '스마트 체크아웃 완료' : `${op} 완료`)
+      notify(op === 'checkout' ? '스마트 체크아웃 완료' : `${label ?? op} 완료`)
     }
     log.refresh(repoPath)
   }
