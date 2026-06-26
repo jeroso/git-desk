@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
 import { getStatus } from '../electron/git/status'
-import { resetTo, undoCommit, revertCommits, isPushed, abortOp } from '../electron/git/ops'
+import { getLog } from '../electron/git/log'
+import { resetTo, undoCommit, revertCommits, isPushed, abortOp, editMessage } from '../electron/git/ops'
 
 let repo: string
 
@@ -149,5 +150,21 @@ describe('isPushed', () => {
     } finally {
       await rm(remote, { recursive: true, force: true })
     }
+  })
+})
+
+describe('editMessage', () => {
+  it('amends the HEAD commit message (fast path)', async () => {
+    const res = await editMessage(repo, C, "fix: it's amended")
+    expect(res.ok).toBe(true)
+    expect((await getLog(repo, 10))[0].subject).toBe("fix: it's amended")
+  })
+  it('rewords a middle commit message via rebase', async () => {
+    const res = await editMessage(repo, B, 'B reworded')
+    expect(res.ok).toBe(true)
+    const s = (await getLog(repo, 10)).map((c) => c.subject)
+    expect(s).toContain('B reworded')
+    expect(s).toContain('C')
+    expect(s).not.toContain('B')
   })
 })

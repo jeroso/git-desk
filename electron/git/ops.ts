@@ -1,5 +1,6 @@
 import { git } from './exec'
 import { localName } from './branch'
+import { rebaseEdit } from './rebaseEdit'
 
 /** 작업을 시도하고, 성공이든 충돌이든 throw하지 않고 결과를 돌려준다. */
 async function tryOp(repo: string, args: string[]): Promise<{ ok: boolean; output: string }> {
@@ -66,6 +67,13 @@ export function abortOp(repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | '
 
 export function markResolved(repo: string, files: string[]) {
   return git(repo, ['add', '--', ...files])
+}
+
+/** 커밋 메시지 수정. HEAD면 amend(빠른 경로), 중간 커밋이면 rebase reword. */
+export async function editMessage(repo: string, hash: string, message: string) {
+  const head = (await git(repo, ['rev-parse', 'HEAD'])).trim()
+  if (hash === head) return tryOp(repo, ['commit', '--amend', '-m', message])
+  return rebaseEdit(repo, { kind: 'reword', hash, message })
 }
 
 /**
