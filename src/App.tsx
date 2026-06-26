@@ -17,6 +17,10 @@ import { useConflictStore } from './store/conflictStore'
 import { withToast, notify, useToast } from './lib/api'
 import { ask } from './lib/prompt'
 import { cleanDiff } from './lib/diff'
+import { ResetModeDialog } from './components/ResetModeDialog'
+import { MessageDialog } from './components/MessageDialog'
+import { RewriteWarningDialog } from './components/RewriteWarningDialog'
+import { headHash } from './lib/commitSelection'
 import type { FileChange } from './types'
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -56,6 +60,10 @@ export default function App() {
   // 일반 체크아웃이 로컬 변경 충돌로 거부됐을 때 띄울 선택 다이얼로그 대상.
   const [checkoutConflict, setCheckoutConflict] = useState<{ name: string; isRemote: boolean } | null>(null)
   const conflict = useConflictStore()
+  const [resetTarget, setResetTarget] = useState<string | null>(null)
+  const [editTarget, setEditTarget] = useState<{ hash: string; initial: string } | null>(null)
+  const [squashTarget, setSquashTarget] = useState<{ hashes: string[]; initial: string } | null>(null)
+  const [rewriteWarn, setRewriteWarn] = useState<{ run: () => void } | null>(null)
 
   async function runOp(
     repoPath: string,
@@ -74,6 +82,23 @@ export default function App() {
       notify(op === 'checkout' ? '스마트 체크아웃 완료' : `${label ?? op} 완료`)
     }
     log.refresh(repoPath)
+  }
+
+  async function guardPushed(relevantHash: string, run: () => void) {
+    if (!repo) return
+    const pushed = await window.api.git.isPushed(repo, relevantHash)
+    if (pushed) setRewriteWarn({ run })
+    else run()
+  }
+  async function doReset(hash: string, mode: 'soft' | 'mixed' | 'hard') {
+    const out = await withToast(() => window.api.git.reset(repo!, hash, mode))
+    if (out !== undefined) notify(`Reset (${mode}) 완료`)
+    log.refresh(repo!)
+  }
+  async function doUndo(hash: string) {
+    const out = await withToast(() => window.api.git.undoCommit(repo!, hash))
+    if (out !== undefined) notify('Undo Commit 완료')
+    log.refresh(repo!)
   }
 
   return (
@@ -212,6 +237,35 @@ export default function App() {
                         onCherryPick={(hashes) =>
                           runOp(repo!, () => window.api.git.cherryPick(repo!, hashes), 'cherry-pick')
                         }
+                        onRevert={(hashes) =>
+                          runOp(repo!, () => window.api.git.revert(repo!, hashes), 'revert', '되돌리기')
+                        }
+                        onReset={(hash) => setResetTarget(hash)}
+                        onUndo={(hash) =>
+                          guardPushed(headHash(log.commits) ?? hash, () => doUndo(hash))
+                        }
+                        onEditMessage={(hash) => {
+                          const c = log.commits.find((x) => x.hash === hash)
+                          setEditTarget({ hash, initial: c?.subject ?? '' })
+                        }}
+                        onDrop={(hashes) =>
+                          guardPushed(hashes[0], () =>
+                            runOp(
+                              repo!,
+                              () => window.api.git.rebaseEdit(repo!, { kind: 'drop', hashes }),
+                              'rebase',
+                              '드롭',
+                            ),
+                          )
+                        }
+                        onSquash={(hashes) => {
+                          const initial = log.commits
+                            .filter((c) => hashes.includes(c.hash))
+                            .map((c) => c.subject)
+                            .reverse()
+                            .join('\n\n')
+                          setSquashTarget({ hashes, initial })
+                        }}
                       />
                     )}
                   </div>
@@ -271,6 +325,65 @@ export default function App() {
             const out = await withToast(() => window.api.git.checkout(repo, cc.name, cc.isRemote, true))
             if (out !== undefined) notify(`'${cc.name}' 체크아웃됨 (강제)`)
             log.refresh(repo)
+          }}
+        />
+      )}
+      {resetTarget && (
+        <ResetModeDialog
+          shortHash={resetTarget.slice(0, 7)}
+          onCancel={() => setResetTarget(null)}
+          onConfirm={(mode) => {
+            const h = resetTarget
+            setResetTarget(null)
+            guardPushed(headHash(log.commits) ?? h, () => doReset(h, mode))
+          }}
+        />
+      )}
+      {editTarget && (
+        <MessageDialog
+          title="커밋 메시지 수정"
+          initial={editTarget.initial}
+          onCancel={() => setEditTarget(null)}
+          onConfirm={(msg) => {
+            const { hash } = editTarget
+            setEditTarget(null)
+            guardPushed(hash, () =>
+              runOp(
+                repo!,
+                () => window.api.git.editMessage(repo!, hash, msg),
+                'rebase',
+                '커밋 메시지 수정',
+              ),
+            )
+          }}
+        />
+      )}
+      {squashTarget && (
+        <MessageDialog
+          title={`Squash ${squashTarget.hashes.length} commits`}
+          initial={squashTarget.initial}
+          onCancel={() => setSquashTarget(null)}
+          onConfirm={(msg) => {
+            const { hashes } = squashTarget
+            setSquashTarget(null)
+            guardPushed(hashes[0], () =>
+              runOp(
+                repo!,
+                () => window.api.git.rebaseEdit(repo!, { kind: 'squash', hashes, message: msg }),
+                'rebase',
+                'Squash',
+              ),
+            )
+          }}
+        />
+      )}
+      {rewriteWarn && (
+        <RewriteWarningDialog
+          onCancel={() => setRewriteWarn(null)}
+          onConfirm={() => {
+            const r = rewriteWarn.run
+            setRewriteWarn(null)
+            r()
           }}
         />
       )}
