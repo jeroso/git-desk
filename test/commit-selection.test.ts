@@ -21,6 +21,14 @@ describe('headHash', () => {
   it('finds the HEAD commit', () => expect(headHash(commits)).toBe('c'))
   it('returns null when no HEAD ref', () => expect(headHash([mk('z', [])])).toBeNull())
 })
+describe('headHash edge cases', () => {
+  it('does not treat origin/HEAD as the local HEAD', () => {
+    expect(headHash([mk('z', [], ['origin/HEAD', 'origin/main'])])).toBeNull()
+  })
+  it('matches a detached bare HEAD ref', () => {
+    expect(headHash([mk('z', [], ['HEAD'])])).toBe('z')
+  })
+})
 describe('isOnCurrentBranch', () => {
   it('true for first-parent ancestors of HEAD', () => {
     expect(isOnCurrentBranch(commits, S('a'))).toBe(true)
@@ -54,5 +62,19 @@ describe('ordering helpers', () => {
   it('orders oldest→newest and newest→oldest', () => {
     expect(orderedOldestToNewest(commits, S('b', 'c'))).toEqual(['b', 'c'])
     expect(orderedNewestToOldest(commits, S('b', 'c'))).toEqual(['c', 'b'])
+  })
+})
+describe('selection predicate edge cases', () => {
+  it('isContiguousRange is false when a merge commit is on the newer side', () => {
+    const merged: Commit[] = [
+      mk('m', ['b', 'x'], ['HEAD -> main']),
+      mk('b', ['a']),
+      mk('x', ['a']),
+      mk('a', []),
+    ]
+    expect(isContiguousRange(merged, S('m', 'b'))).toBe(false)
+  })
+  it('isOnCurrentBranch is false for a mixed on/off-branch selection', () => {
+    expect(isOnCurrentBranch(commits, S('b', 'x'))).toBe(false)
   })
 })
