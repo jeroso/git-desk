@@ -34,6 +34,11 @@ export function undoCommit(repo: string, hash: string) {
   return git(repo, ['reset', '--soft', `${hash}^`])
 }
 
+/** 하나 이상의 커밋을 되돌린다 (호출부가 newest→oldest 순서로 전달). 충돌 시 ok:false. */
+export function revertCommits(repo: string, hashes: string[]) {
+  return tryOp(repo, ['revert', '--no-edit', ...hashes])
+}
+
 /**
  * 스마트 체크아웃(IntelliJ "Smart checkout"). `git checkout -m`으로 현재 브랜치·작업트리·
  * 대상 브랜치의 3-way 머지를 수행해 커밋되지 않은 로컬 변경을 대상 브랜치로 가져간다.
@@ -45,11 +50,11 @@ export function smartCheckout(repo: string, name: string, isRemote = false) {
 }
 
 // 충돌 후 진행/중단
-export function continueOp(repo: string, op: 'merge' | 'rebase' | 'cherry-pick') {
+export function continueOp(repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | 'revert') {
   const args = op === 'merge' ? ['commit', '--no-edit'] : [op, '--continue']
   return tryOp(repo, args)
 }
-export function abortOp(repo: string, op: 'merge' | 'rebase' | 'cherry-pick') {
+export function abortOp(repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | 'revert') {
   return tryOp(repo, [op, '--abort'])
 }
 

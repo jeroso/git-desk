@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
 import { getStatus } from '../electron/git/status'
-import { resetTo, undoCommit } from '../electron/git/ops'
+import { resetTo, undoCommit, revertCommits } from '../electron/git/ops'
 
 let repo: string
 
@@ -66,5 +66,41 @@ describe('undoCommit', () => {
     await undoCommit(repo, C)
     expect(await rev('HEAD')).toBe(B)
     expect(await git(repo, ['diff', '--cached', '--name-only'])).toContain('c.txt')
+  })
+})
+
+describe('revertCommits', () => {
+  it('reverts a single commit, removing its file', async () => {
+    const res = await revertCommits(repo, [C])
+    expect(res.ok).toBe(true)
+    const exists = await git(repo, ['cat-file', '-e', 'HEAD:c.txt']).then(() => 'exists').catch(() => 'missing')
+    expect(exists).toBe('missing')
+  })
+  it('reverts multiple commits (newest→oldest)', async () => {
+    const res = await revertCommits(repo, [C, B])
+    expect(res.ok).toBe(true)
+    const tree = await git(repo, ['ls-tree', '-r', '--name-only', 'HEAD'])
+    expect(tree).toContain('a.txt')
+    expect(tree).not.toContain('b.txt')
+    expect(tree).not.toContain('c.txt')
+  })
+  it('returns ok:false and leaves a conflict when revert cannot apply cleanly', async () => {
+    const r2 = await mkdtemp(path.join(tmpdir(), 'gitdesk-revc-'))
+    try {
+      await git(r2, ['init', '-q'])
+      await git(r2, ['config', 'user.email', 't@t.com'])
+      await git(r2, ['config', 'user.name', 't'])
+      await git(r2, ['config', 'commit.gpgsign', 'false'])
+      await writeFile(path.join(r2, 'f.txt'), 'A\n'); await git(r2, ['add', '-A']); await git(r2, ['commit', '-q', '-m', 'c1'])
+      await writeFile(path.join(r2, 'f.txt'), 'B\n'); await git(r2, ['commit', '-aq', '-m', 'c2'])
+      const c2 = (await git(r2, ['rev-parse', 'HEAD'])).trim()
+      await writeFile(path.join(r2, 'f.txt'), 'C\n'); await git(r2, ['commit', '-aq', '-m', 'c3'])
+      const res = await revertCommits(r2, [c2])
+      expect(res.ok).toBe(false)
+      const conflicted = (await getStatus(r2)).filter((s) => s.status === 'conflicted')
+      expect(conflicted.length).toBeGreaterThan(0)
+    } finally {
+      await rm(r2, { recursive: true, force: true })
+    }
   })
 })
