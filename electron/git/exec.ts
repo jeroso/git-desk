@@ -15,12 +15,17 @@ export class GitError extends Error {
 }
 
 /** 모든 git 호출의 단일 통로. 0이 아닌 종료코드면 GitError를 throw한다. */
-export async function git(cwd: string, args: string[]): Promise<string> {
+export async function git(
+  cwd: string,
+  args: string[],
+  opts?: { env?: NodeJS.ProcessEnv },
+): Promise<string> {
   try {
     const { stdout } = await pExecFile('git', args, {
       cwd,
       maxBuffer: 64 * 1024 * 1024,
       windowsHide: true,
+      env: opts?.env ? { ...process.env, ...opts.env } : undefined,
     })
     return stdout
   } catch (err) {
