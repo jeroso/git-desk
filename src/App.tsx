@@ -244,9 +244,9 @@ export default function App() {
                         onUndo={(hash) =>
                           guardPushed(headHash(log.commits) ?? hash, () => doUndo(hash))
                         }
-                        onEditMessage={(hash) => {
-                          const c = log.commits.find((x) => x.hash === hash)
-                          setEditTarget({ hash, initial: c?.subject ?? '' })
+                        onEditMessage={async (hash) => {
+                          const full = (await withToast(() => window.api.git.commitMessage(repo!, hash))) ?? ''
+                          setEditTarget({ hash, initial: full })
                         }}
                         onDrop={(hashes) =>
                           guardPushed(hashes[0], () =>

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
 import { getStatus } from '../electron/git/status'
-import { getLog } from '../electron/git/log'
+import { getLog, getCommitMessage } from '../electron/git/log'
 import { resetTo, undoCommit, revertCommits, isPushed, abortOp, editMessage } from '../electron/git/ops'
 
 let repo: string
@@ -150,6 +150,19 @@ describe('isPushed', () => {
     } finally {
       await rm(remote, { recursive: true, force: true })
     }
+  })
+})
+
+describe('getCommitMessage', () => {
+  it('returns the full multi-line commit message (subject + body)', async () => {
+    await git(repo, ['commit', '-q', '--allow-empty', '-m', 'Subject line', '-m', 'Body para 1', '-m', 'Body para 2'])
+    const msg = await getCommitMessage(repo, 'HEAD')
+    expect(msg).toContain('Subject line')
+    expect(msg).toContain('Body para 1')
+    expect(msg).toContain('Body para 2')
+    // subject and body separated by a blank line, no trailing newline noise
+    expect(msg.startsWith('Subject line')).toBe(true)
+    expect(msg.endsWith('\n')).toBe(false)
   })
 })
 

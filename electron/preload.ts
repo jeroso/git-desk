@@ -50,6 +50,7 @@ const api = {
       ipcRenderer.invoke('git:reset', repo, hash, mode),
     undoCommit: (repo: string, hash: string) => ipcRenderer.invoke('git:undoCommit', repo, hash),
     revert: (repo: string, hashes: string[]) => ipcRenderer.invoke('git:revert', repo, hashes),
+    commitMessage: (repo: string, hash: string) => ipcRenderer.invoke('git:commitMessage', repo, hash),
     editMessage: (repo: string, hash: string, message: string) =>
       ipcRenderer.invoke('git:editMessage', repo, hash, message),
     rebaseEdit: (repo: string, req: RebaseEditRequest) =>

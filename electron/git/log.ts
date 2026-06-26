@@ -29,6 +29,12 @@ export function parseLog(raw: string): Commit[] {
     })
 }
 
+/** 커밋의 전체 메시지(제목+본문). 편집 다이얼로그 prefill용. */
+export async function getCommitMessage(repo: string, hash: string): Promise<string> {
+  const out = await git(repo, ['log', '-1', '--format=%B', hash])
+  return out.replace(/\n+$/, '')
+}
+
 /**
  * 커밋을 날짜순으로 가져온다. ref가 주어지면 그 브랜치/레퍼런스의 히스토리만,
  * 없으면 모든 브랜치(--all). limit으로 페이지네이션.

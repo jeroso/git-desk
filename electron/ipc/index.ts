@@ -1,6 +1,6 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { openDiffWindow } from './diffWindow'
-import { getLog } from '../git/log'
+import { getLog, getCommitMessage } from '../git/log'
 import { computeGraph } from '../git/graph'
 import { getStatus } from '../git/status'
 import { getBranches, checkout, createBranch, deleteBranch, currentBranch } from '../git/branch'
@@ -97,6 +97,7 @@ export function registerIpc() {
   )
   ipcMain.handle('git:undoCommit', (_e, repo: string, hash: string) => undoCommit(repo, hash))
   ipcMain.handle('git:revert', (_e, repo: string, hashes: string[]) => revertCommits(repo, hashes))
+  ipcMain.handle('git:commitMessage', (_e, repo: string, hash: string) => getCommitMessage(repo, hash))
   ipcMain.handle('git:editMessage', (_e, repo: string, hash: string, message: string) =>
     editMessage(repo, hash, message),
   )
