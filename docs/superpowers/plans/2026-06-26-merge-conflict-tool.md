@@ -720,3 +720,268 @@ git add -A && git commit -m "chore: finalize 3-pane merge conflict tool" || true
 - **Spec 커버리지:** 파서(Task 1), 백엔드 read/write+IPC(Task 2), store/패널 버튼(Task 3), MergeView 3-pane+버튼+편집+저장(Task 4), App 연결(Task 5), 폴백(Task 4의 `!ok` 분기), 테스트(Task 1/2 + 수동). 모두 태스크 존재. ✅
 - **Placeholder:** 없음(모든 코드 완전 기재).
 - **타입/이름 일관성:** `ParsedConflict`/`ConflictSeg`/`parseConflicts`/`buildMerged`(Task 1) → MergeView(Task 4)에서 동일 import. `mergeFile`/`openMerge`/`closeMerge`(Task 3 store) → ConflictPanel(Task 3)·App(Task 5)에서 동일 사용. `readWorktreeFile`/`writeWorktreeFile`(Task 2) → IPC/preload/MergeView에서 동일. `markResolved`는 기존 API 재사용. 일관 확인.
+
+---
+
+## Phase 2: 충돌 상태 영속 + 배너 (Tasks 7–10)
+
+**문제:** 충돌은 repo에 영속(unmerged index + 진행 중 작업 마커)되는데 앱은 메모리로만 추적 → 팝업을 닫거나 앱 재실행 시 "충돌 중"을 잊고, 표시도 없고, checkout 등이 거부돼도 안내가 없다.
+
+**해결:** repo의 실제 충돌 상태를 감지해 **상시 배너**로 노출하고, 거기서 ConflictPanel 재오픈(해결) 또는 abort(롤백)를 제공.
+
+> Task 7의 conflictStore는 **Task 3의 변경(mergeFile)을 포함한 최종본**이다 — 그대로 적용(덮어쓰기).
+
+### Task 7: `getConflictState` 백엔드 + IPC
+
+**Files:** Create `electron/git/conflictState.ts`, `test/conflict-state.test.ts`; Modify `electron/ipc/index.ts`, `electron/preload.ts`.
+
+- [ ] **Step 1: 실패 테스트** — `test/conflict-state.test.ts`
+
+```ts
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { git } from '../electron/git/exec'
+import { mergeBranch, abortOp } from '../electron/git/ops'
+import { getConflictState } from '../electron/git/conflictState'
+
+let repo: string
+let def: string
+
+beforeEach(async () => {
+  repo = await mkdtemp(path.join(tmpdir(), 'gitdesk-cs-'))
+  await git(repo, ['init', '-q'])
+  await git(repo, ['config', 'user.email', 't@t.com'])
+  await git(repo, ['config', 'user.name', 't'])
+  await git(repo, ['config', 'commit.gpgsign', 'false'])
+  await writeFile(path.join(repo, 'f.txt'), 'base\n')
+  await git(repo, ['add', '-A']); await git(repo, ['commit', '-q', '-m', 'base'])
+  def = (await git(repo, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim()
+  await git(repo, ['checkout', '-q', '-b', 'feat'])
+  await writeFile(path.join(repo, 'f.txt'), 'feat\n'); await git(repo, ['commit', '-aq', '-m', 'feat'])
+  await git(repo, ['checkout', '-q', def])
+  await writeFile(path.join(repo, 'f.txt'), 'main\n'); await git(repo, ['commit', '-aq', '-m', 'main'])
+})
+afterEach(async () => { await rm(repo, { recursive: true, force: true }) })
+
+describe('getConflictState', () => {
+  it('reports a clean repo as not in progress', async () => {
+    const s = await getConflictState(repo)
+    expect(s).toEqual({ inProgress: false, op: null, files: [] })
+  })
+  it('detects an in-progress merge conflict with files', async () => {
+    await mergeBranch(repo, 'feat')
+    const s = await getConflictState(repo)
+    expect(s.inProgress).toBe(true)
+    expect(s.op).toBe('merge')
+    expect(s.files).toContain('f.txt')
+  })
+  it('clears after abort', async () => {
+    await mergeBranch(repo, 'feat')
+    await abortOp(repo, 'merge')
+    const s = await getConflictState(repo)
+    expect(s.inProgress).toBe(false)
+    expect(s.op).toBeNull()
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인** — `npm run test -- test/conflict-state.test.ts` → FAIL (모듈 없음)
+
+- [ ] **Step 3: 구현** — `electron/git/conflictState.ts`
+
+```ts
+import { join } from 'node:path'
+import { access } from 'node:fs/promises'
+import { git } from './exec'
+import { getStatus } from './status'
+
+export type ConflictOp = 'merge' | 'rebase' | 'cherry-pick' | 'revert'
+
+export interface ConflictStateResult {
+  inProgress: boolean
+  op: ConflictOp | null
+  files: string[]
+}
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** repo의 진행 중 충돌 작업과 충돌 파일을 감지한다(앱 재실행 후에도 동작). */
+export async function getConflictState(repo: string): Promise<ConflictStateResult> {
+  const gitDir = (await git(repo, ['rev-parse', '--absolute-git-dir'])).trim()
+  let op: ConflictOp | null = null
+  if ((await exists(join(gitDir, 'rebase-merge'))) || (await exists(join(gitDir, 'rebase-apply')))) op = 'rebase'
+  else if (await exists(join(gitDir, 'MERGE_HEAD'))) op = 'merge'
+  else if (await exists(join(gitDir, 'CHERRY_PICK_HEAD'))) op = 'cherry-pick'
+  else if (await exists(join(gitDir, 'REVERT_HEAD'))) op = 'revert'
+  const files = (await getStatus(repo)).filter((s) => s.status === 'conflicted').map((s) => s.path)
+  return { inProgress: op !== null || files.length > 0, op, files }
+}
+```
+
+- [ ] **Step 4: 통과** — `npm run test -- test/conflict-state.test.ts` → PASS
+
+- [ ] **Step 5: IPC + preload**
+
+`electron/ipc/index.ts`: import `import { getConflictState } from '../git/conflictState'` 추가; 핸들러 `ipcMain.handle('git:conflictState', (_e, repo: string) => getConflictState(repo))` 추가(`git:status` 근처).
+`electron/preload.ts`: `git` 객체에 `conflictState: (repo: string) => ipcRenderer.invoke('git:conflictState', repo),` 추가.
+
+- [ ] **Step 6: 게이트 + 커밋** — `npx tsc --noEmit` EXIT 0; `npm run test` green.
+```bash
+git add electron/git/conflictState.ts test/conflict-state.test.ts electron/ipc/index.ts electron/preload.ts
+git commit -m "feat(conflict): detect in-progress conflict state (op + files)"
+```
+
+### Task 8: conflictStore에 `detected` 추가 (Task 3 포함 최종본)
+
+**Files:** Modify `src/store/conflictStore.ts` (전체 교체 — Task 3의 mergeFile + detected 모두 포함)
+
+```ts
+import { create } from 'zustand'
+
+// 'checkout' is special: a `git checkout -m` left conflict markers in the working tree.
+type Op = 'merge' | 'rebase' | 'cherry-pick' | 'checkout' | 'revert'
+
+interface Detected {
+  inProgress: boolean
+  op: 'merge' | 'rebase' | 'cherry-pick' | 'revert' | null
+  files: string[]
+}
+
+interface ConflictState {
+  active: boolean
+  op: Op | null
+  files: string[]
+  mergeFile: string | null
+  detected: Detected // repo에서 감지한 영속 충돌 상태(배너 구동)
+  open: (op: Op, files: string[]) => void
+  close: () => void
+  openMerge: (file: string) => void
+  closeMerge: () => void
+  setDetected: (d: Detected) => void
+}
+
+export const useConflictStore = create<ConflictState>((set) => ({
+  active: false,
+  op: null,
+  files: [],
+  mergeFile: null,
+  detected: { inProgress: false, op: null, files: [] },
+  open: (op, files) => set({ active: true, op, files }),
+  close: () => set({ active: false, op: null, files: [], mergeFile: null }),
+  openMerge: (file) => set({ mergeFile: file }),
+  closeMerge: () => set({ mergeFile: null }),
+  setDetected: (d) => set({ detected: d }),
+}))
+```
+
+- [ ] 게이트: `npx tsc --noEmit` EXIT 0. 커밋: `feat(conflict): conflictStore detected state`
+
+### Task 9: `ConflictBanner.tsx`
+
+**Files:** Create `src/components/ConflictBanner.tsx`
+
+```tsx
+import { useConflictStore } from '../store/conflictStore'
+
+interface Props {
+  onResolve: () => void
+  onAbort: () => void
+}
+
+export function ConflictBanner({ onResolve, onAbort }: Props) {
+  const detected = useConflictStore((s) => s.detected)
+  if (!detected.inProgress) return null
+  const abortable = detected.op !== null
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5 text-xs bg-amber-100 dark:bg-amber-900/40 border-b border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100">
+      <span className="font-semibold">⚠️ 충돌 해결 중 ({detected.op ?? '충돌'})</span>
+      <span className="text-amber-700 dark:text-amber-300">{detected.files.length}개 파일</span>
+      <span className="flex-1" />
+      <button onClick={onResolve} className="bg-amber-600 text-white rounded px-2 py-0.5 hover:bg-amber-700">
+        해결하기
+      </button>
+      {abortable && (
+        <button
+          onClick={onAbort}
+          className="border border-amber-400 dark:border-amber-600 rounded px-2 py-0.5 hover:bg-amber-200 dark:hover:bg-amber-800"
+        >
+          중단 (abort)
+        </button>
+      )}
+    </div>
+  )
+}
+```
+
+- [ ] 게이트: `npx tsc --noEmit` EXIT 0. 커밋: `feat(conflict): ConflictBanner component`
+
+### Task 10: App 연결 (배너 + 상태 새로고침 + 액션)
+
+**Files:** Modify `src/App.tsx`
+
+- [ ] **Step 1: import 추가** (다른 컴포넌트 import 근처)
+```tsx
+import { ConflictBanner } from './components/ConflictBanner'
+import { useConflictStore } from './store/conflictStore'
+```
+(이미 `useConflictStore`를 import하고 있으면 중복 추가하지 말 것.)
+
+- [ ] **Step 2: 감지 상태 새로고침 effect** — 다른 `useEffect`들 근처에 추가
+```tsx
+  // repo 또는 로그가 갱신될 때마다 실제 충돌 상태를 감지해 배너에 반영.
+  useEffect(() => {
+    if (!repo) {
+      useConflictStore.getState().setDetected({ inProgress: false, op: null, files: [] })
+      return
+    }
+    window.api.git
+      .conflictState(repo)
+      .then((d) => useConflictStore.getState().setDetected(d))
+      .catch(() => {})
+  }, [repo, log.commits])
+```
+
+- [ ] **Step 3: 배너 렌더 + 액션** — repo 콘텐츠 영역 최상단(탭 바 위, `{tab === 'log' ...}` 블록을 감싼 div 바로 안쪽 위)에 배너를 두고, 액션을 연결:
+```tsx
+          <ConflictBanner
+            onResolve={() => {
+              const d = useConflictStore.getState().detected
+              conflict.open(d.op ?? 'checkout', d.files)
+            }}
+            onAbort={async () => {
+              const d = useConflictStore.getState().detected
+              if (!d.op) return
+              if (!window.confirm(`${d.op} 작업을 중단(abort)하고 되돌릴까요?`)) return
+              const out = await withToast(() =>
+                window.api.git.abortOp(repo!, d.op as 'merge' | 'rebase' | 'cherry-pick' | 'revert'),
+              )
+              if (out !== undefined) notify('충돌 작업을 중단했습니다')
+              log.refresh(repo!)
+            }}
+          />
+```
+구체 위치: `tab === 'log'`/`'commit'`를 분기하는 `<div className="flex-1 flex flex-col min-h-0">` 바로 다음(탭 버튼 줄 위)에 위치시켜 로그/커밋 탭 모두에서 보이게 한다.
+
+- [ ] **Step 4: ConflictPanel onDone에 감지 새로고침 보장** — 기존 `<ConflictPanel repo={repo} onDone={() => log.refresh(repo)} />`는 그대로 둬도 effect가 `log.commits` 변화로 배너를 갱신한다(continue/abort가 HEAD/작업트리를 바꿔 로그가 새로고침되므로). 추가 변경 불필요.
+
+- [ ] **Step 5: 게이트 + 커밋** — `npx tsc --noEmit` EXIT 0.
+```bash
+git add src/App.tsx
+git commit -m "feat(conflict): persistent conflict banner with resolve/abort"
+```
+
+### Phase 2 수동 스모크 (사용자 확인)
+- [ ] 충돌 유발 → ConflictPanel 자동 표시 + 상단 배너 표시
+- [ ] ConflictPanel 닫아도 **배너 유지**, 앱 재실행해도 배너 표시
+- [ ] 배너 "해결하기" → ConflictPanel 다시 열림 → 파일 "머지"로 MergeView
+- [ ] 배너 "중단(abort)" → 확인 후 롤백, 배너 사라짐
+- [ ] 충돌 중 다른 브랜치 checkout 실패해도 배너로 해결 경로 제공
