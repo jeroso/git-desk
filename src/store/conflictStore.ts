@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 // 'checkout' is special: a `git checkout -m` left conflict markers in the working tree.
 // There is nothing to continue/commit — the user just resolves files and closes.
-type Op = 'merge' | 'rebase' | 'cherry-pick' | 'checkout'
+type Op = 'merge' | 'rebase' | 'cherry-pick' | 'checkout' | 'revert'
 
 interface ConflictState {
   active: boolean

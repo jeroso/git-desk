@@ -18,7 +18,7 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
   // 사용자가 파일을 해결한 뒤 닫으면 변경은 작업트리에 그대로 남는다.
   const isCheckout = op === 'checkout'
   // abort/continue를 갖는 op만 추린다 (checkout 분기에서만 사용하므로 안전).
-  const resumeOp = op as 'merge' | 'rebase' | 'cherry-pick'
+  const resumeOp = op as 'merge' | 'rebase' | 'cherry-pick' | 'revert'
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40">
