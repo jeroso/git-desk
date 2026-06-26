@@ -15,6 +15,7 @@ import {
 } from '../git/ops'
 import { rebaseEdit, type RebaseEditRequest } from '../git/rebaseEdit'
 import { readWorktreeFile, writeWorktreeFile } from '../git/worktreeFile'
+import { getConflictState } from '../git/conflictState'
 
 export function registerIpc() {
   // repos
@@ -36,6 +37,7 @@ export function registerIpc() {
 
   // status / branches
   ipcMain.handle('git:status', (_e, repo: string) => getStatus(repo))
+  ipcMain.handle('git:conflictState', (_e, repo: string) => getConflictState(repo))
   ipcMain.handle('git:branches', (_e, repo: string) => getBranches(repo))
   ipcMain.handle('git:currentBranch', (_e, repo: string) => currentBranch(repo))
   ipcMain.handle('git:checkout', (_e, repo: string, name: string, isRemote?: boolean, force?: boolean) =>

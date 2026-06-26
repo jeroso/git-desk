@@ -12,6 +12,7 @@ const api = {
     log: (repo: string, limit?: number, ref?: string) =>
       ipcRenderer.invoke('git:log', repo, limit, ref),
     status: (repo: string) => ipcRenderer.invoke('git:status', repo),
+    conflictState: (repo: string) => ipcRenderer.invoke('git:conflictState', repo),
     branches: (repo: string) => ipcRenderer.invoke('git:branches', repo),
     currentBranch: (repo: string) => ipcRenderer.invoke('git:currentBranch', repo),
     checkout: (repo: string, name: string, isRemote?: boolean, force?: boolean) =>
