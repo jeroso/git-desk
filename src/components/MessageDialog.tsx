@@ -19,12 +19,13 @@ export function MessageDialog({
         <textarea
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') onCancel() }}
           rows={6}
           autoFocus
           className="w-full border dark:border-neutral-600 dark:bg-neutral-900 rounded p-2 font-mono"
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className="border dark:border-neutral-600 rounded px-3 py-1">
+          <button onClick={onCancel} className="border dark:border-neutral-600 rounded px-3 py-1 hover:bg-gray-100 dark:hover:bg-neutral-700">
             취소
           </button>
           <button

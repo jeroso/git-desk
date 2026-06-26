@@ -20,7 +20,7 @@ export function ResetModeDialog({
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-neutral-800 dark:text-neutral-100 rounded-lg shadow-xl w-96 p-4 text-xs space-y-3">
-        <div className="font-semibold text-sm">현재 브랜치를 {shortHash}(으)로 Reset</div>
+        <div className="font-semibold text-sm">현재 브랜치를 이 커밋({shortHash})으로 Reset</div>
         <div className="space-y-2">
           {opts.map((o) => (
             <label key={o.v} className="flex gap-2 items-start cursor-pointer">
@@ -39,7 +39,7 @@ export function ResetModeDialog({
           ))}
         </div>
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onCancel} className="border dark:border-neutral-600 rounded px-3 py-1">
+          <button onClick={onCancel} className="border dark:border-neutral-600 rounded px-3 py-1 hover:bg-gray-100 dark:hover:bg-neutral-700">
             취소
           </button>
           <button onClick={() => onConfirm(mode)} className="bg-blue-600 text-white rounded px-3 py-1">

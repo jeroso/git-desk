@@ -17,7 +17,7 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
   // checkout 모드: `git checkout -m`이 남긴 충돌. continue/commit 개념이 없고,
   // 사용자가 파일을 해결한 뒤 닫으면 변경은 작업트리에 그대로 남는다.
   const isCheckout = op === 'checkout'
-  // abort/continue를 갖는 op만 추린다 (checkout 분기에서만 사용하므로 안전).
+  // checkout을 제외한 충돌 op(merge/rebase/cherry-pick/revert)에서 abort/continue에 사용.
   const resumeOp = op as 'merge' | 'rebase' | 'cherry-pick' | 'revert'
 
   return (

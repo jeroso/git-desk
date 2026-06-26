@@ -14,7 +14,7 @@ export function RewriteWarningDialog({
           강제 푸시가 필요하고 충돌이 생길 수 있습니다. 계속할까요?
         </p>
         <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className="border dark:border-neutral-600 rounded px-3 py-1">
+          <button onClick={onCancel} className="border dark:border-neutral-600 rounded px-3 py-1 hover:bg-gray-100 dark:hover:bg-neutral-700">
             취소
           </button>
           <button onClick={onConfirm} className="bg-amber-600 text-white rounded px-3 py-1">

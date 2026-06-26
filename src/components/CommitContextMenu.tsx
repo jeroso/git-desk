@@ -16,7 +16,7 @@ interface Props {
   count: number
   shortHash: string
   canRewrite: boolean // 선택이 현재 브랜치 조상인지 (edit/drop/squash 전제)
-  canUndo: boolean // HEAD 연속 tip
+  canUndo: boolean // HEAD 연속 tip; single-select only
   canSquash: boolean // 선형 연속
   onClose: () => void
   onAction: (a: CommitAction) => void
