@@ -62,6 +62,10 @@ const api = {
       ipcRenderer.invoke('git:abortOp', repo, op),
     markResolved: (repo: string, files: string[]) =>
       ipcRenderer.invoke('git:markResolved', repo, files),
+    readWorktreeFile: (repo: string, file: string) =>
+      ipcRenderer.invoke('git:readWorktreeFile', repo, file),
+    writeWorktreeFile: (repo: string, file: string, content: string) =>
+      ipcRenderer.invoke('git:writeWorktreeFile', repo, file, content),
     rollback: (repo: string, files: { path: string; status: string }[]) =>
       ipcRenderer.invoke('git:rollback', repo, files),
   },

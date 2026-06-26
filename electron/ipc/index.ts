@@ -14,6 +14,7 @@ import {
   resetTo, undoCommit, revertCommits, isPushed, editMessage,
 } from '../git/ops'
 import { rebaseEdit, type RebaseEditRequest } from '../git/rebaseEdit'
+import { readWorktreeFile, writeWorktreeFile } from '../git/worktreeFile'
 
 export function registerIpc() {
   // repos
@@ -111,6 +112,12 @@ export function registerIpc() {
   )
   ipcMain.handle('git:markResolved', (_e, repo: string, files: string[]) =>
     markResolved(repo, files),
+  )
+  ipcMain.handle('git:readWorktreeFile', (_e, repo: string, file: string) =>
+    readWorktreeFile(repo, file),
+  )
+  ipcMain.handle('git:writeWorktreeFile', (_e, repo: string, file: string, content: string) =>
+    writeWorktreeFile(repo, file, content),
   )
   ipcMain.handle('git:rollback', (_e, repo: string, files: { path: string; status: string }[]) =>
     rollback(repo, files),
