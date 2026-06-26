@@ -430,8 +430,7 @@ Expected: FAIL — `electron/git/rebaseEdit` 모듈 없음.
 - [ ] **Step 3: 구현** — `electron/git/rebaseEdit.ts` 생성 (drop/reword/squash 전체 구현)
 
 ```ts
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { git } from './exec'
 
@@ -440,7 +439,7 @@ export type RebaseEditRequest =
   | { kind: 'reword'; hash: string; message: string }
   | { kind: 'squash'; hashes: string[]; message: string }
 
-/** 단일 따옴표 셸 컨텍스트용 escape: ' → '\'' 후 전체를 '...'로 감쌈 (개행 보존). */
+/** 단일 따옴표 셸 컨텍스트용 escape (한 줄 문자열: 경로 등). */
 function shq(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`
 }
@@ -460,7 +459,9 @@ async function tryEnv(
 /**
  * Drop / Reword / Squash를 비대화형 `rebase -i`로 수행한다.
  * - GIT_SEQUENCE_EDITOR로 todo를 주입(시작 시 1회).
- * - 메시지는 `exec git commit --amend -m '...'` 인라인 → --continue 시 외부 파일 의존 없음.
+ * - 메시지는 `exec git commit --amend -F <파일>`로 참조. 파일은 git 디렉터리 안에 둬서
+ *   충돌 후 --continue 시점까지 유지되고 다음 작업 시작 시 정리된다. 개행/특수문자 안전.
+ *   (todo는 라인 단위 파싱이라 -m 인라인은 개행 메시지에서 깨진다 → 반드시 -F 파일 사용.)
  * - 충돌 시 ok:false. 호출부(runOp)가 op='rebase'로 ConflictPanel을 띄워 continue/abort 처리.
  */
 export async function rebaseEdit(
@@ -490,6 +491,17 @@ export async function rebaseEdit(
     base = null
   }
 
+  // 메시지/ todo 파일을 git 디렉터리 안 작업폴더에 둔다. 충돌-continue 시점까지 유지되고,
+  // 다음 rebaseEdit 시작 시 정리된다(아래 rmSync). git은 rebase 진행 중 새 rebase를 막으므로
+  // 이전 작업의 잔여 파일은 항상 stale → 안전하게 삭제 가능.
+  const gitDir = (await git(repo, ['rev-parse', '--absolute-git-dir'])).trim()
+  const workDir = join(gitDir, 'gitdesk-rebaseedit')
+  rmSync(workDir, { recursive: true, force: true })
+  mkdirSync(workDir, { recursive: true })
+  const msgPath = join(workDir, 'message')
+  // --cleanup=verbatim: 메시지를 그대로 보존(주석/공백 줄 유지). 경로엔 개행이 없어 todo 한 줄 유지.
+  const amendExec = `exec git commit --amend --cleanup=verbatim -F ${shq(msgPath)}`
+
   // rebase todo 라인 생성
   const lines: string[] = []
   if (req.kind === 'drop') {
@@ -500,11 +512,13 @@ export async function rebaseEdit(
       return tryEnv(repo, ['reset', '--hard', base], {})
     }
   } else if (req.kind === 'reword') {
+    writeFileSync(msgPath, req.message)
     for (const sha of inRange) {
       lines.push(`pick ${sha}`)
-      if (sha === req.hash) lines.push(`exec git commit --amend -m ${shq(req.message)}`)
+      if (sha === req.hash) lines.push(amendExec)
     }
   } else {
+    writeFileSync(msgPath, req.message)
     const inTargets = inRange.filter((s) => targetSet.has(s))
     const newestTarget = inTargets[inTargets.length - 1]
     let seenFirst = false
@@ -512,26 +526,21 @@ export async function rebaseEdit(
       if (targetSet.has(sha)) {
         lines.push(`${seenFirst ? 'fixup' : 'pick'} ${sha}`)
         seenFirst = true
-        if (sha === newestTarget) lines.push(`exec git commit --amend -m ${shq(req.message)}`)
+        if (sha === newestTarget) lines.push(amendExec)
       } else {
         lines.push(`pick ${sha}`)
       }
     }
   }
 
-  const tmp = mkdtempSync(join(tmpdir(), 'gitdesk-rebase-'))
-  const todoPath = join(tmp, 'todo')
+  const todoPath = join(workDir, 'todo')
   writeFileSync(todoPath, lines.join('\n') + '\n')
-  try {
-    const baseArg = base ?? '--root'
-    return await tryEnv(
-      repo,
-      ['-c', 'core.editor=true', 'rebase', '-i', '--autostash', baseArg],
-      { GIT_SEQUENCE_EDITOR: `cp ${shq(todoPath)}` },
-    )
-  } finally {
-    rmSync(tmp, { recursive: true, force: true })
-  }
+  const baseArg = base ?? '--root'
+  return tryEnv(
+    repo,
+    ['-c', 'core.editor=true', 'rebase', '-i', '--autostash', baseArg],
+    { GIT_SEQUENCE_EDITOR: `cp ${shq(todoPath)}` },
+  )
 }
 ```
 
@@ -604,6 +613,21 @@ describe('rebaseEdit squash', () => {
     const t = await tree()
     expect(t).toContain('b.txt'); expect(t).toContain('c.txt')
     expect((await getLog(repo, 50)).length).toBe(3) // init, A, squashed
+  })
+
+  // 회귀: 메시지에 개행이 있어도 todo가 깨지지 않아야 한다(파일 기반 -F 사용). Squash
+  // 다이얼로그가 메시지를 '\n\n'으로 결합해 prefill하므로 다중 줄 메시지는 일반 경로다.
+  it('preserves a multi-line combined message and does not leave a rebase in progress', async () => {
+    const msg = 'Combined title\n\nBody line 1\nBody line 2\n'
+    const res = await rebaseEdit(repo, { kind: 'squash', hashes: [B, C], message: msg })
+    expect(res.ok).toBe(true)
+    const body = await git(repo, ['show', '-s', '--format=%B', 'HEAD'])
+    expect(body).toContain('Combined title')
+    expect(body).toContain('Body line 1')
+    expect(body).toContain('Body line 2')
+    // detached(HEAD)로 남지 않았는지 = rebase가 끝까지 진행됐는지 확인
+    expect((await git(repo, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim()).not.toBe('HEAD')
+    expect((await getLog(repo, 50)).length).toBe(3)
   })
 })
 ```
