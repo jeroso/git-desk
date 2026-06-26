@@ -1,35 +1,52 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Commit, GraphLayout } from '../../types'
 import { ROW_H, NODE_R, cx, cy, laneColor, graphWidth } from './render'
+import { CommitContextMenu, type CommitAction } from '../CommitContextMenu'
+import {
+  isOnCurrentBranch,
+  isContiguousFromHead,
+  isContiguousRange,
+  orderedOldestToNewest,
+} from '../../lib/commitSelection'
 
 interface Props {
   commits: Commit[]
   graph: GraphLayout
   selectedHash: string | null
   onSelect: (hash: string) => void
-  /** hashes ordered oldest→newest, ready to pass to `git cherry-pick`. */
   onCherryPick: (hashes: string[]) => void
+  onReset: (hash: string) => void
+  onUndo: (oldestHash: string) => void
+  onEditMessage: (hash: string) => void
+  onRevert: (hashesNewestToOldest: string[]) => void
+  onDrop: (hashes: string[]) => void
+  onSquash: (hashes: string[]) => void
 }
 
-export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPick }: Props) {
+export function CommitGraph({
+  commits,
+  graph,
+  selectedHash,
+  onSelect,
+  onCherryPick,
+  onReset,
+  onUndo,
+  onEditMessage,
+  onRevert,
+  onDrop,
+  onSquash,
+}: Props) {
   const width = graphWidth(graph)
   const height = commits.length * ROW_H
 
-  // Multi-selection for batch operations (cherry-pick). Separate from `selectedHash`,
-  // which is the single "active" commit driving the changed-files/diff panes.
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [anchor, setAnchor] = useState<number | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; acting: string[] } | null>(null)
 
-  // Reset selection whenever the commit list changes (repo switch / refresh).
   useEffect(() => {
     setSelected(new Set())
     setAnchor(null)
-  }, [commits])
-
-  const indexOf = useMemo(() => {
-    const m = new Map<string, number>()
-    commits.forEach((c, i) => m.set(c.hash, i))
-    return m
+    setMenu(null)
   }, [commits])
 
   const handleClick = (row: number, hash: string, e: React.MouseEvent) => {
@@ -53,18 +70,26 @@ export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPi
 
   const handleContextMenu = (hash: string, e: React.MouseEvent) => {
     e.preventDefault()
-    // If the right-clicked commit is part of a multi-selection, act on the whole set.
-    const target = selected.has(hash) && selected.size > 1 ? [...selected] : [hash]
-    // Order oldest→newest (commits are listed newest-first, so larger index = older).
-    const ordered = target
-      .map((h) => ({ h, i: indexOf.get(h) ?? 0 }))
-      .sort((a, b) => b.i - a.i)
-      .map((x) => x.h)
-    const label =
-      ordered.length > 1
-        ? `${ordered.length}개 커밋을 cherry-pick 하시겠습니까?`
-        : `Cherry-pick ${hash.slice(0, 7)} 하시겠습니까?`
-    if (window.confirm(label)) onCherryPick(ordered)
+    // 우클릭이 멀티선택 내부면 선택 전체를, 아니면 해당 커밋만 대상으로.
+    const acting = selected.has(hash) && selected.size > 1 ? [...selected] : [hash]
+    setMenu({ x: e.clientX, y: e.clientY, acting })
+  }
+
+  const actingSet = menu ? new Set(menu.acting) : new Set<string>()
+  const orderedOld = menu ? orderedOldestToNewest(commits, actingSet) : []
+
+  const handleAction = (a: CommitAction) => {
+    if (!menu) return
+    const single = orderedOld[0]
+    if (!single) return
+    if (a === 'cherryPick') onCherryPick(orderedOld)
+    else if (a === 'revert') onRevert([...orderedOld].reverse())
+    else if (a === 'drop') onDrop(orderedOld)
+    else if (a === 'squash') onSquash(orderedOld)
+    else if (a === 'reset') onReset(single)
+    else if (a === 'editMessage') onEditMessage(single)
+    else if (a === 'undo') onUndo(single)
+    else if (a === 'copyHash') navigator.clipboard?.writeText(single)
   }
 
   return (
@@ -104,20 +129,40 @@ export function CommitGraph({ commits, graph, selectedHash, onSelect, onCherryPi
                 {c.refs.length > 0 && (
                   <span className="flex gap-1">
                     {c.refs.map((r) => (
-                      <span key={r} className="text-[10px] bg-amber-200 dark:bg-amber-700 dark:text-amber-100 rounded px-1">
+                      <span
+                        key={r}
+                        className="text-[10px] bg-amber-200 dark:bg-amber-700 dark:text-amber-100 rounded px-1"
+                      >
                         {r}
                       </span>
                     ))}
                   </span>
                 )}
-                <span className="flex-1 truncate" title={c.subject}>{c.subject}</span>
+                <span className="flex-1 truncate" title={c.subject}>
+                  {c.subject}
+                </span>
                 <span className="text-gray-500 dark:text-neutral-400 w-20 truncate">{c.author}</span>
-                <span className="text-gray-400 dark:text-neutral-500 w-16 text-right">{c.dateISO.slice(0, 10)}</span>
+                <span className="text-gray-400 dark:text-neutral-500 w-16 text-right">
+                  {c.dateISO.slice(0, 10)}
+                </span>
               </button>
             )
           })}
         </div>
       </div>
+      {menu && (
+        <CommitContextMenu
+          x={menu.x}
+          y={menu.y}
+          count={menu.acting.length}
+          shortHash={(orderedOld[0] ?? '').slice(0, 7)}
+          canRewrite={isOnCurrentBranch(commits, actingSet)}
+          canUndo={isContiguousFromHead(commits, actingSet)}
+          canSquash={isContiguousRange(commits, actingSet)}
+          onClose={() => setMenu(null)}
+          onAction={handleAction}
+        />
+      )}
     </div>
   )
 }
