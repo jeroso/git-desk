@@ -78,4 +78,17 @@ describe('rebaseEdit squash', () => {
     expect(t).toContain('b.txt'); expect(t).toContain('c.txt')
     expect((await getLog(repo, 50)).length).toBe(3) // init, A, squashed
   })
+
+  // 회귀: 메시지에 개행이 있어도 todo가 깨지지 않아야 한다(파일 기반 -F 사용).
+  it('preserves a multi-line combined message and does not leave a rebase in progress', async () => {
+    const msg = 'Combined title\n\nBody line 1\nBody line 2\n'
+    const res = await rebaseEdit(repo, { kind: 'squash', hashes: [B, C], message: msg })
+    expect(res.ok).toBe(true)
+    const body = await git(repo, ['show', '-s', '--format=%B', 'HEAD'])
+    expect(body).toContain('Combined title')
+    expect(body).toContain('Body line 1')
+    expect(body).toContain('Body line 2')
+    expect((await git(repo, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim()).not.toBe('HEAD')
+    expect((await getLog(repo, 50)).length).toBe(3)
+  })
 })
