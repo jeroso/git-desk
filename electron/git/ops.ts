@@ -39,6 +39,12 @@ export function revertCommits(repo: string, hashes: string[]) {
   return tryOp(repo, ['revert', '--no-edit', ...hashes])
 }
 
+/** 해당 커밋이 원격 추적 브랜치에 포함돼 있는지(=이미 푸시됐는지). */
+export async function isPushed(repo: string, hash: string): Promise<boolean> {
+  const out = await git(repo, ['branch', '-r', '--contains', hash])
+  return out.trim().length > 0
+}
+
 /**
  * 스마트 체크아웃(IntelliJ "Smart checkout"). `git checkout -m`으로 현재 브랜치·작업트리·
  * 대상 브랜치의 3-way 머지를 수행해 커밋되지 않은 로컬 변경을 대상 브랜치로 가져간다.

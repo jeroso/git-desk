@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
 import { getStatus } from '../electron/git/status'
-import { resetTo, undoCommit, revertCommits } from '../electron/git/ops'
+import { resetTo, undoCommit, revertCommits, isPushed } from '../electron/git/ops'
 
 let repo: string
 
@@ -101,6 +101,24 @@ describe('revertCommits', () => {
       expect(conflicted.length).toBeGreaterThan(0)
     } finally {
       await rm(r2, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('isPushed', () => {
+  it('is false for local-only commits and true for pushed commits', async () => {
+    const remote = await mkdtemp(path.join(tmpdir(), 'gitdesk-rem-'))
+    try {
+      await git(remote, ['init', '-q', '--bare'])
+      await git(repo, ['remote', 'add', 'origin', remote])
+      const branch = (await git(repo, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim()
+      await git(repo, ['push', '-q', '-u', 'origin', branch]) // init..C 푸시
+      await commitFile('d.txt', 'D'); const D = await rev('HEAD')
+      expect(await isPushed(repo, A)).toBe(true)
+      expect(await isPushed(repo, C)).toBe(true)
+      expect(await isPushed(repo, D)).toBe(false)
+    } finally {
+      await rm(remote, { recursive: true, force: true })
     }
   })
 })
