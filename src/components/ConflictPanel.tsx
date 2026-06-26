@@ -3,7 +3,7 @@ import { useToast, withToast } from '../lib/api'
 import type { FileChange } from '../types'
 
 export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => void }) {
-  const { active, op, files, open, close } = useConflictStore()
+  const { active, op, files, open, close, openMerge } = useConflictStore()
   if (!active || !op) return null
 
   // 현재 충돌 파일 목록을 다시 읽어 패널에 반영한다. 남은 충돌이 없으면 0개로 갱신된다.
@@ -37,6 +37,12 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
           {files.map((f) => (
             <div key={f} className="flex items-center gap-2 px-2 py-1">
               <span className="flex-1 font-mono truncate">{f}</span>
+              <button
+                className="border dark:border-neutral-600 rounded px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-neutral-700"
+                onClick={() => openMerge(f)}
+              >
+                머지
+              </button>
               <button
                 className="border dark:border-neutral-600 rounded px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-neutral-700"
                 onClick={() => window.api.shell.openPath(`${repo}/${f}`)}
