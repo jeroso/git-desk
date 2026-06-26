@@ -1,9 +1,20 @@
+import { useEffect } from 'react'
 import { useConflictStore } from '../store/conflictStore'
 import { useToast, withToast } from '../lib/api'
 import type { FileChange } from '../types'
 
 export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => void }) {
   const { active, op, files, open, close, openMerge } = useConflictStore()
+
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !useConflictStore.getState().mergeFile) close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active, close])
+
   if (!active || !op) return null
 
   // 현재 충돌 파일 목록을 다시 읽어 패널에 반영한다. 남은 충돌이 없으면 0개로 갱신된다.

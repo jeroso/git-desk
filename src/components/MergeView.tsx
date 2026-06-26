@@ -64,6 +64,14 @@ export function MergeView({ repo, file, onClose, onResolved }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo, file])
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   if (!parsed) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 text-white text-sm">
