@@ -52,3 +52,16 @@ describe('rebaseEdit drop', () => {
     expect(t).not.toContain('a.txt'); expect(t).toContain('b.txt'); expect(t).not.toContain('c.txt')
   })
 })
+
+describe('rebaseEdit reword', () => {
+  it('rewords a middle commit, preserving descendants and files', async () => {
+    const res = await rebaseEdit(repo, { kind: 'reword', hash: B, message: "B's new msg" })
+    expect(res.ok).toBe(true)
+    const s = await subjects()
+    expect(s).toContain("B's new msg")
+    expect(s).toContain('C')
+    expect(s).not.toContain('B')
+    const t = await tree()
+    expect(t).toContain('b.txt'); expect(t).toContain('c.txt')
+  })
+})
