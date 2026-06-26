@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#27406e"/>
+      <stop offset="1" stop-color="#0d1730"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded tile (macOS-style), content baked in with transparent corners -->
+  <rect x="104" y="104" width="816" height="816" rx="184" fill="url(#bg)"/>
+  <rect x="104" y="104" width="816" height="816" rx="184" fill="url(#sheen)"/>
+  <rect x="105" y="105" width="814" height="814" rx="183" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- commit-graph edges (curved beziers, same shape the app draws) -->
+  <g fill="none" stroke-linecap="round" stroke-width="30">
+    <!-- trunk lane (blue): n1 -> n3 -> n4 -->
+    <path d="M392 300 L392 724" stroke="#58a6ff"/>
+    <!-- feature branch out (green): n1 -> n2 -->
+    <path d="M392 300 C392 376 600 376 600 452" stroke="#3fb950"/>
+    <!-- feature branch merge (green): n2 -> n3 -->
+    <path d="M600 452 C600 506 392 506 392 560" stroke="#3fb950"/>
+  </g>
+
+  <!-- commit nodes (multi-color, like the app's lane colors) -->
+  <g>
+    <circle cx="392" cy="300" r="58" fill="#f0883e"/>
+    <circle cx="600" cy="452" r="58" fill="#3fb950"/>
+    <circle cx="392" cy="560" r="58" fill="#58a6ff"/>
+    <circle cx="392" cy="724" r="58" fill="#bc8cff"/>
+  </g>
+</svg>
