@@ -263,7 +263,7 @@ export default function App() {
                         commits={log.commits}
                         graph={log.graph}
                         selectedHash={log.selectedHash}
-                        onSelect={(h) => log.selectCommit(repo, h)}
+                        onSelectionChange={(hashes) => log.selectCommits(repo!, hashes)}
                         onCherryPick={(hashes) =>
                           runOp(repo!, () => window.api.git.cherryPick(repo!, hashes), 'cherry-pick')
                         }

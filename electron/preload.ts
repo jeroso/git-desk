@@ -29,6 +29,10 @@ const api = {
       ipcRenderer.invoke('git:commitDiff', repo, hash, file),
     worktreeDiff: (repo: string, file: string, staged: boolean) =>
       ipcRenderer.invoke('git:worktreeDiff', repo, file, staged),
+    rangeFiles: (repo: string, oldest: string, newest: string) =>
+      ipcRenderer.invoke('git:rangeFiles', repo, oldest, newest),
+    rangeDiff: (repo: string, oldest: string, newest: string, file: string) =>
+      ipcRenderer.invoke('git:rangeDiff', repo, oldest, newest, file),
     commit: (repo: string, files: string[], msg: string) =>
       ipcRenderer.invoke('git:commit', repo, files, msg),
     commitAndPush: (repo: string, files: string[], msg: string) =>

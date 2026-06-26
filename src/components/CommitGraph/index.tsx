@@ -13,7 +13,7 @@ interface Props {
   commits: Commit[]
   graph: GraphLayout
   selectedHash: string | null
-  onSelect: (hash: string) => void
+  onSelectionChange: (hashes: string[]) => void
   onCherryPick: (hashes: string[]) => void
   onReset: (hash: string) => void
   onUndo: (oldestHash: string) => void
@@ -27,7 +27,7 @@ export function CommitGraph({
   commits,
   graph,
   selectedHash,
-  onSelect,
+  onSelectionChange,
   onCherryPick,
   onReset,
   onUndo,
@@ -50,22 +50,22 @@ export function CommitGraph({
   }, [commits])
 
   const handleClick = (row: number, hash: string, e: React.MouseEvent) => {
+    let next: Set<string>
     if (e.shiftKey && anchor !== null) {
       const [lo, hi] = anchor < row ? [anchor, row] : [row, anchor]
-      setSelected(new Set(commits.slice(lo, hi + 1).map((c) => c.hash)))
+      next = new Set(commits.slice(lo, hi + 1).map((c) => c.hash))
     } else if (e.metaKey || e.ctrlKey) {
-      setSelected((prev) => {
-        const next = new Set(prev)
-        if (next.has(hash)) next.delete(hash)
-        else next.add(hash)
-        return next
-      })
+      next = new Set(selected)
+      if (next.has(hash)) next.delete(hash)
+      else next.add(hash)
       setAnchor(row)
     } else {
-      setSelected(new Set([hash]))
+      next = new Set([hash])
       setAnchor(row)
     }
-    onSelect(hash)
+    setSelected(next)
+    const ordered = commits.filter((c) => next.has(c.hash)).map((c) => c.hash).reverse()
+    onSelectionChange(ordered)
   }
 
   const handleContextMenu = (hash: string, e: React.MouseEvent) => {

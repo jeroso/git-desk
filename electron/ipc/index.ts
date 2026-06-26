@@ -4,7 +4,7 @@ import { getLog, getCommitMessage } from '../git/log'
 import { computeGraph } from '../git/graph'
 import { getStatus } from '../git/status'
 import { getBranches, checkout, createBranch, deleteBranch, currentBranch } from '../git/branch'
-import { getCommitFiles, getCommitDiff, getWorktreeDiff } from '../git/diff'
+import { getCommitFiles, getCommitDiff, getWorktreeDiff, getRangeFiles, getRangeDiff } from '../git/diff'
 import { listRepos, addRepo, removeRepo } from '../repos/store'
 import { commit, commitAndPush } from '../git/commit'
 import { getRemotes, setRemoteUrl, rewriteRemoteHost, fetchRemote, pull, push, pushBranch, updateBranch } from '../git/remote'
@@ -60,6 +60,12 @@ export function registerIpc() {
   )
   ipcMain.handle('git:worktreeDiff', (_e, repo: string, file: string, staged: boolean) =>
     getWorktreeDiff(repo, file, staged),
+  )
+  ipcMain.handle('git:rangeFiles', (_e, repo: string, oldest: string, newest: string) =>
+    getRangeFiles(repo, oldest, newest),
+  )
+  ipcMain.handle('git:rangeDiff', (_e, repo: string, oldest: string, newest: string, file: string) =>
+    getRangeDiff(repo, oldest, newest, file),
   )
 
   ipcMain.handle('git:commit', (_e, repo: string, files: string[], msg: string) =>

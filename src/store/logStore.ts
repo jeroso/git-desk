@@ -11,6 +11,7 @@ interface LogState {
   /** 현재 체크아웃된 로컬 브랜치 이름. detached HEAD면 null. */
   currentBranch: string | null
   selectedHash: string | null
+  selectedHashes: string[]
   changedFiles: { path: string; status: string }[]
   selectedFile: string | null
   diff: string
@@ -18,6 +19,7 @@ interface LogState {
   /** Switch the log to a branch's history (null = all branches), then reload. */
   selectBranch: (repo: string, ref: string | null) => Promise<void>
   selectCommit: (repo: string, hash: string) => Promise<void>
+  selectCommits: (repo: string, hashes: string[]) => Promise<void>
   selectFile: (repo: string, file: string) => Promise<void>
 }
 
@@ -28,6 +30,7 @@ export const useLogStore = create<LogState>((set, get) => ({
   selectedRef: null,
   currentBranch: null,
   selectedHash: null,
+  selectedHashes: [],
   changedFiles: [],
   selectedFile: null,
   diff: '',
@@ -52,6 +55,7 @@ export const useLogStore = create<LogState>((set, get) => ({
       branches: branches ?? [],
       currentBranch: branches?.find((b) => b.isCurrent)?.name ?? null,
       selectedHash: null,
+      selectedHashes: [],
       changedFiles: [],
       selectedFile: null,
       diff: '',
@@ -63,12 +67,33 @@ export const useLogStore = create<LogState>((set, get) => ({
   },
   selectCommit: async (repo, hash) => {
     const files = (await withToast(() => window.api.git.commitFiles(repo, hash))) ?? []
-    set({ selectedHash: hash, changedFiles: files, selectedFile: null, diff: '' })
+    set({ selectedHash: hash, selectedHashes: [hash], changedFiles: files, selectedFile: null, diff: '' })
+  },
+  selectCommits: async (repo, hashes) => {
+    if (hashes.length === 0) {
+      set({ selectedHash: null, selectedHashes: [], changedFiles: [], selectedFile: null, diff: '' })
+      return
+    }
+    if (hashes.length === 1) {
+      await get().selectCommit(repo, hashes[0])
+      return
+    }
+    const oldest = hashes[0]
+    const newest = hashes[hashes.length - 1]
+    const files = (await withToast(() => window.api.git.rangeFiles(repo, oldest, newest))) ?? []
+    set({ selectedHash: newest, selectedHashes: hashes, changedFiles: files, selectedFile: null, diff: '' })
   },
   selectFile: async (repo, file) => {
-    const hash = get().selectedHash
-    if (!hash) return
-    const diff = (await withToast(() => window.api.git.commitDiff(repo, hash, file))) ?? ''
+    const { selectedHash, selectedHashes } = get()
+    if (selectedHashes.length > 1) {
+      const oldest = selectedHashes[0]
+      const newest = selectedHashes[selectedHashes.length - 1]
+      const diff = (await withToast(() => window.api.git.rangeDiff(repo, oldest, newest, file))) ?? ''
+      set({ selectedFile: file, diff })
+      return
+    }
+    if (!selectedHash) return
+    const diff = (await withToast(() => window.api.git.commitDiff(repo, selectedHash, file))) ?? ''
     set({ selectedFile: file, diff })
   },
 }))
