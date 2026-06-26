@@ -1,6 +1,6 @@
 {
   "name": "git-desk",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "IntelliJ-style desktop git client",
   "author": "jeroso",
   "repository": "github:jeroso/git-desk",
