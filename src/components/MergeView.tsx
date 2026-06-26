@@ -19,7 +19,7 @@ function Lines({ lines, tone }: { lines: string[]; tone: 'shared' | 'ours' | 'th
   return (
     <div className={bg}>
       {lines.map((l, i) => (
-        <div key={i} className="px-2 whitespace-pre">
+        <div key={i} className="px-2 whitespace-pre-wrap break-words">
           {l || ' '}
         </div>
       ))}
@@ -29,7 +29,9 @@ function Lines({ lines, tone }: { lines: string[]; tone: 'shared' | 'ours' | 'th
 
 function Cell({ side, children }: { side: 'l' | 'm' | 'r'; children: ReactNode }) {
   const border = side !== 'r' ? 'border-r dark:border-neutral-700' : ''
-  return <div className={`${border} min-w-0`}>{children}</div>
+  // overflow-hidden + min-w-0 keep each column's long lines inside its own track
+  // (with grid-cols-3 = minmax(0,1fr), unwrapped lines would otherwise bleed over the next column).
+  return <div className={`${border} min-w-0 overflow-hidden`}>{children}</div>
 }
 
 export function MergeView({ repo, file, onClose, onResolved }: Props) {
