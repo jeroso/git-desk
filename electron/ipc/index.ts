@@ -9,7 +9,11 @@ import { listRepos, addRepo, removeRepo } from '../repos/store'
 import { commit, commitAndPush } from '../git/commit'
 import { getRemotes, setRemoteUrl, rewriteRemoteHost, fetchRemote, pull, push, pushBranch, updateBranch } from '../git/remote'
 import { readSshHosts } from '../ssh/config'
-import { mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved, rollback, smartCheckout } from '../git/ops'
+import {
+  mergeBranch, rebaseOnto, cherryPick, continueOp, abortOp, markResolved, rollback, smartCheckout,
+  resetTo, undoCommit, revertCommits, isPushed, editMessage,
+} from '../git/ops'
+import { rebaseEdit, type RebaseEditRequest } from '../git/rebaseEdit'
 
 export function registerIpc() {
   // repos
@@ -88,10 +92,20 @@ export function registerIpc() {
   ipcMain.handle('git:merge', (_e, repo: string, b: string) => mergeBranch(repo, b))
   ipcMain.handle('git:rebase', (_e, repo: string, b: string) => rebaseOnto(repo, b))
   ipcMain.handle('git:cherryPick', (_e, repo: string, hashes: string[]) => cherryPick(repo, hashes))
-  ipcMain.handle('git:continueOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
+  ipcMain.handle('git:reset', (_e, repo: string, hash: string, mode: 'soft' | 'mixed' | 'hard') =>
+    resetTo(repo, hash, mode),
+  )
+  ipcMain.handle('git:undoCommit', (_e, repo: string, hash: string) => undoCommit(repo, hash))
+  ipcMain.handle('git:revert', (_e, repo: string, hashes: string[]) => revertCommits(repo, hashes))
+  ipcMain.handle('git:editMessage', (_e, repo: string, hash: string, message: string) =>
+    editMessage(repo, hash, message),
+  )
+  ipcMain.handle('git:rebaseEdit', (_e, repo: string, req: RebaseEditRequest) => rebaseEdit(repo, req))
+  ipcMain.handle('git:isPushed', (_e, repo: string, hash: string) => isPushed(repo, hash))
+  ipcMain.handle('git:continueOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | 'revert') =>
     continueOp(repo, op),
   )
-  ipcMain.handle('git:abortOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
+  ipcMain.handle('git:abortOp', (_e, repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | 'revert') =>
     abortOp(repo, op),
   )
   ipcMain.handle('git:markResolved', (_e, repo: string, files: string[]) =>

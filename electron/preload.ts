@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { RebaseEditRequest } from './git/rebaseEdit'
 
 const api = {
   repos: {
@@ -45,9 +46,18 @@ const api = {
     merge: (repo: string, b: string) => ipcRenderer.invoke('git:merge', repo, b),
     rebase: (repo: string, b: string) => ipcRenderer.invoke('git:rebase', repo, b),
     cherryPick: (repo: string, hashes: string[]) => ipcRenderer.invoke('git:cherryPick', repo, hashes),
-    continueOp: (repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
+    reset: (repo: string, hash: string, mode: 'soft' | 'mixed' | 'hard') =>
+      ipcRenderer.invoke('git:reset', repo, hash, mode),
+    undoCommit: (repo: string, hash: string) => ipcRenderer.invoke('git:undoCommit', repo, hash),
+    revert: (repo: string, hashes: string[]) => ipcRenderer.invoke('git:revert', repo, hashes),
+    editMessage: (repo: string, hash: string, message: string) =>
+      ipcRenderer.invoke('git:editMessage', repo, hash, message),
+    rebaseEdit: (repo: string, req: RebaseEditRequest) =>
+      ipcRenderer.invoke('git:rebaseEdit', repo, req),
+    isPushed: (repo: string, hash: string) => ipcRenderer.invoke('git:isPushed', repo, hash),
+    continueOp: (repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | 'revert') =>
       ipcRenderer.invoke('git:continueOp', repo, op),
-    abortOp: (repo: string, op: 'merge' | 'rebase' | 'cherry-pick') =>
+    abortOp: (repo: string, op: 'merge' | 'rebase' | 'cherry-pick' | 'revert') =>
       ipcRenderer.invoke('git:abortOp', repo, op),
     markResolved: (repo: string, files: string[]) =>
       ipcRenderer.invoke('git:markResolved', repo, files),
