@@ -65,3 +65,17 @@ describe('rebaseEdit reword', () => {
     expect(t).toContain('b.txt'); expect(t).toContain('c.txt')
   })
 })
+
+describe('rebaseEdit squash', () => {
+  it('squashes contiguous commits into one with a combined message', async () => {
+    const res = await rebaseEdit(repo, { kind: 'squash', hashes: [B, C], message: 'B+C squashed' })
+    expect(res.ok).toBe(true)
+    const s = await subjects()
+    expect(s).toContain('B+C squashed')
+    expect(s).not.toContain('B')
+    expect(s).not.toContain('C')
+    const t = await tree()
+    expect(t).toContain('b.txt'); expect(t).toContain('c.txt')
+    expect((await getLog(repo, 50)).length).toBe(3) // init, A, squashed
+  })
+})
