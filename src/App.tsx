@@ -10,6 +10,8 @@ import { Toast } from './components/Toast'
 import { CommitView } from './components/CommitView'
 import { RemoteDialog } from './components/RemoteDialog'
 import { ConflictPanel } from './components/ConflictPanel'
+import { MergeView } from './components/MergeView'
+import { ConflictBanner } from './components/ConflictBanner'
 import { CheckoutConflictDialog } from './components/CheckoutConflictDialog'
 import { PromptDialog } from './components/PromptDialog'
 import { Splitter } from './components/Splitter'
@@ -51,6 +53,18 @@ export default function App() {
   }, [current?.path])
 
   const repo = current?.path
+
+  // repo 또는 로그가 갱신될 때마다 실제 충돌 상태를 감지해 배너에 반영.
+  useEffect(() => {
+    if (!repo) {
+      useConflictStore.getState().setDetected({ inProgress: false, op: null, files: [] })
+      return
+    }
+    window.api.git
+      .conflictState(repo)
+      .then((d) => useConflictStore.getState().setDetected(d))
+      .catch(() => {})
+  }, [repo, log.commits])
   const [tab, setTab] = useState<'log' | 'commit'>('log')
   const [showRemote, setShowRemote] = useState(false)
   // Resizable pane sizes (px). Drag the splitters between panes to adjust.
@@ -130,6 +144,22 @@ export default function App() {
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0">
+          <ConflictBanner
+            onResolve={() => {
+              const d = useConflictStore.getState().detected
+              conflict.open(d.op ?? 'checkout', d.files)
+            }}
+            onAbort={async () => {
+              const d = useConflictStore.getState().detected
+              if (!d.op) return
+              if (!window.confirm(`${d.op} 작업을 중단(abort)하고 되돌릴까요?`)) return
+              const out = await withToast(() =>
+                window.api.git.abortOp(repo!, d.op as 'merge' | 'rebase' | 'cherry-pick' | 'revert'),
+              )
+              if (out !== undefined) notify('충돌 작업을 중단했습니다')
+              log.refresh(repo!)
+            }}
+          />
           <div className="flex gap-1 px-2 pt-1 text-xs border-b dark:border-neutral-700">
             {(['log', 'commit'] as const).map((t) => (
               <button
@@ -304,6 +334,17 @@ export default function App() {
       )}
       {showRemote && repo && <RemoteDialog repo={repo} onClose={() => setShowRemote(false)} />}
       {repo && <ConflictPanel repo={repo} onDone={() => log.refresh(repo)} />}
+      {repo && conflict.mergeFile && (
+        <MergeView
+          repo={repo}
+          file={conflict.mergeFile}
+          onClose={conflict.closeMerge}
+          onResolved={() => {
+            conflict.closeMerge()
+            log.refresh(repo)
+          }}
+        />
+      )}
       {checkoutConflict && repo && (
         <CheckoutConflictDialog
           branch={checkoutConflict.name}
