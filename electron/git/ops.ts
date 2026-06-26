@@ -24,6 +24,16 @@ export function cherryPick(repo: string, hashes: string[]) {
   return tryOp(repo, ['cherry-pick', ...hashes])
 }
 
+/** 현재 브랜치 HEAD를 주어진 커밋으로 이동 (IntelliJ "Reset Current Branch to Here"). */
+export function resetTo(repo: string, hash: string, mode: 'soft' | 'mixed' | 'hard') {
+  return git(repo, ['reset', `--${mode}`, hash])
+}
+
+/** tip 커밋(들)을 무르되 변경분은 staged로 보존 (IntelliJ "Undo Commit"). hash = 되돌릴 가장 오래된 커밋. */
+export function undoCommit(repo: string, hash: string) {
+  return git(repo, ['reset', '--soft', `${hash}^`])
+}
+
 /**
  * 스마트 체크아웃(IntelliJ "Smart checkout"). `git checkout -m`으로 현재 브랜치·작업트리·
  * 대상 브랜치의 3-way 머지를 수행해 커밋되지 않은 로컬 변경을 대상 브랜치로 가져간다.

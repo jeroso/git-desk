@@ -3,6 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { git } from '../electron/git/exec'
+import { getStatus } from '../electron/git/status'
+import { resetTo, undoCommit } from '../electron/git/ops'
 
 let repo: string
 
@@ -34,5 +36,35 @@ describe('exec git() env option', () => {
       env: { GIT_AUTHOR_NAME: 'EnvPerson', GIT_AUTHOR_EMAIL: 'env@example.com' },
     })
     expect(out).toContain('EnvPerson <env@example.com>')
+  })
+})
+
+describe('resetTo', () => {
+  it('soft: moves HEAD, keeps changes staged', async () => {
+    await resetTo(repo, A, 'soft')
+    expect(await rev('HEAD')).toBe(A)
+    const staged = await git(repo, ['diff', '--cached', '--name-only'])
+    expect(staged).toContain('b.txt')
+    expect(staged).toContain('c.txt')
+  })
+  it('mixed: moves HEAD, unstages but keeps worktree files', async () => {
+    await resetTo(repo, A, 'mixed')
+    expect(await rev('HEAD')).toBe(A)
+    expect(await git(repo, ['diff', '--cached', '--name-only'])).toBe('')
+    const paths = (await getStatus(repo)).map((s) => s.path)
+    expect(paths).toEqual(expect.arrayContaining(['b.txt', 'c.txt']))
+  })
+  it('hard: moves HEAD and discards changes', async () => {
+    await resetTo(repo, A, 'hard')
+    expect(await rev('HEAD')).toBe(A)
+    expect((await getStatus(repo)).length).toBe(0)
+  })
+})
+
+describe('undoCommit', () => {
+  it('undoes the tip commit, keeping its changes staged', async () => {
+    await undoCommit(repo, C)
+    expect(await rev('HEAD')).toBe(B)
+    expect(await git(repo, ['diff', '--cached', '--name-only'])).toContain('c.txt')
   })
 })
