@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { RebaseEditRequest } from './git/rebaseEdit'
+import type { LogFilter } from './git/log'
 
 const api = {
   repos: {
@@ -9,8 +10,9 @@ const api = {
     open: (p: string) => ipcRenderer.invoke('repos:open', p),
   },
   git: {
-    log: (repo: string, limit?: number, ref?: string) =>
-      ipcRenderer.invoke('git:log', repo, limit, ref),
+    log: (repo: string, limit?: number, ref?: string, filter?: LogFilter) =>
+      ipcRenderer.invoke('git:log', repo, limit, ref, filter),
+    authors: (repo: string) => ipcRenderer.invoke('git:authors', repo),
     status: (repo: string) => ipcRenderer.invoke('git:status', repo),
     conflictState: (repo: string) => ipcRenderer.invoke('git:conflictState', repo),
     branches: (repo: string) => ipcRenderer.invoke('git:branches', repo),

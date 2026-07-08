@@ -8,11 +8,13 @@ interface Props {
   branch: string
   isCurrent: boolean
   isRemote: boolean
+  // 2개 이상 다중 선택된 상태에서 그 일부를 우클릭하면 값이 들어온다. 있으면 "일괄 삭제"만 노출.
+  bulkCount?: number
   onClose: () => void
   onAction: (action: Action) => void
 }
 
-export function BranchContextMenu({ x, y, branch, isCurrent, isRemote, onClose, onAction }: Props) {
+export function BranchContextMenu({ x, y, branch, isCurrent, isRemote, bulkCount, onClose, onAction }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   // Start at the click point; clamp into the viewport after we can measure the menu.
   const [pos, setPos] = useState({ x, y })
@@ -31,27 +33,30 @@ export function BranchContextMenu({ x, y, branch, isCurrent, isRemote, onClose, 
   }, [x, y])
 
   // `divider: true` renders a separator instead of a button.
-  const items: ({ key: Action; label: string; disabled?: boolean } | { divider: true })[] = [
-    { key: 'checkout', label: `Checkout '${branch}'`, disabled: isCurrent },
-    { key: 'newBranch', label: `New branch from '${branch}'…` },
-    { divider: true },
-    { key: 'merge', label: `Merge '${branch}' into current` },
-    { key: 'rebase', label: `Rebase current onto '${branch}'` },
-    // Push / Update only make sense for local branches.
-    ...(isRemote
-      ? []
-      : ([
-          { divider: true },
-          { key: 'update', label: `Update '${branch}'` },
-          { key: 'push', label: `Push '${branch}'` },
-        ] as const)),
-    { divider: true },
-    {
-      key: 'delete',
-      label: isRemote ? `Delete remote '${branch}'…` : `Delete '${branch}'…`,
-      disabled: isCurrent,
-    },
-  ]
+  // 다중 선택(일괄 삭제) 모드: 단일 브랜치 전용 액션은 의미가 없으므로 삭제만 노출.
+  const items: ({ key: Action; label: string; disabled?: boolean } | { divider: true })[] = bulkCount
+    ? [{ key: 'delete', label: `${bulkCount}개 브랜치 삭제…` }]
+    : [
+        { key: 'checkout', label: `Checkout '${branch}'`, disabled: isCurrent },
+        { key: 'newBranch', label: `New branch from '${branch}'…` },
+        { divider: true },
+        { key: 'merge', label: `Merge '${branch}' into current` },
+        { key: 'rebase', label: `Rebase current onto '${branch}'` },
+        // Push / Update only make sense for local branches.
+        ...(isRemote
+          ? []
+          : ([
+              { divider: true },
+              { key: 'update', label: `Update '${branch}'` },
+              { key: 'push', label: `Push '${branch}'` },
+            ] as const)),
+        { divider: true },
+        {
+          key: 'delete',
+          label: isRemote ? `Delete remote '${branch}'…` : `Delete '${branch}'…`,
+          disabled: isCurrent,
+        },
+      ]
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />

@@ -40,4 +40,19 @@ describe('computeGraph', () => {
     expect(g.nodes).toHaveLength(1)
     expect(g.edges).toHaveLength(0)
   })
+
+  it('keeps lanes compact when parents are outside the window (filtered/sparse history)', () => {
+    // Author/message filters yield non-contiguous commits: each one's parent is
+    // NOT in the loaded set. Lanes must collapse back to 0, not grow to N — else
+    // the graph balloons sideways and pushes commit messages off-screen.
+    const g = computeGraph([
+      { hash: 'A', parents: ['x1'] },
+      { hash: 'B', parents: ['x2'] },
+      { hash: 'C', parents: ['x3'] },
+      { hash: 'D', parents: [] },
+    ])
+    expect(g.laneCount).toBe(1)
+    expect(g.nodes.map((n) => n.lane)).toEqual([0, 0, 0, 0])
+    expect(g.edges).toHaveLength(0)
+  })
 })

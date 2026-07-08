@@ -1,6 +1,6 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { openDiffWindow } from './diffWindow'
-import { getLog, getCommitMessage } from '../git/log'
+import { getLog, getAuthors, getCommitMessage, type LogFilter } from '../git/log'
 import { computeGraph } from '../git/graph'
 import { getStatus } from '../git/status'
 import { getBranches, checkout, createBranch, deleteBranch, currentBranch } from '../git/branch'
@@ -29,11 +29,15 @@ export function registerIpc() {
   ipcMain.handle('repos:open', (_e, p: string) => addRepo(p, new Date().toISOString()))
 
   // log + graph
-  ipcMain.handle('git:log', async (_e, repo: string, limit?: number, ref?: string) => {
-    const commits = await getLog(repo, limit, ref)
-    const graph = computeGraph(commits)
-    return { commits, graph }
-  })
+  ipcMain.handle(
+    'git:log',
+    async (_e, repo: string, limit?: number, ref?: string, filter?: LogFilter) => {
+      const commits = await getLog(repo, limit, ref, filter)
+      const graph = computeGraph(commits)
+      return { commits, graph }
+    },
+  )
+  ipcMain.handle('git:authors', (_e, repo: string) => getAuthors(repo))
 
   // status / branches
   ipcMain.handle('git:status', (_e, repo: string) => getStatus(repo))

@@ -13,6 +13,7 @@ import { ConflictPanel } from './components/ConflictPanel'
 import { MergeView } from './components/MergeView'
 import { ConflictBanner } from './components/ConflictBanner'
 import { CheckoutConflictDialog } from './components/CheckoutConflictDialog'
+import { LogFilterBar } from './components/LogFilterBar'
 import { PromptDialog } from './components/PromptDialog'
 import { Splitter } from './components/Splitter'
 import { useConflictStore } from './store/conflictStore'
@@ -23,7 +24,7 @@ import { ResetModeDialog } from './components/ResetModeDialog'
 import { MessageDialog } from './components/MessageDialog'
 import { RewriteWarningDialog } from './components/RewriteWarningDialog'
 import { headHash } from './lib/commitSelection'
-import type { FileChange } from './types'
+import type { FileChange, Branch } from './types'
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
@@ -47,8 +48,11 @@ export default function App() {
   }, [loadRecents])
 
   useEffect(() => {
-    // New repo: reset the history filter to "all branches" and load.
-    if (current) log.selectBranch(current.path, null)
+    // New repo: reset the commit filter, show all branches, and load the author list.
+    if (!current) return
+    useLogStore.setState({ filter: { author: '', text: '', since: '', until: '' } })
+    log.selectBranch(current.path, null)
+    log.loadAuthors(current.path)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.path])
 
@@ -241,6 +245,59 @@ export default function App() {
                       log.refresh(repo!)
                     }
                   }}
+                  onBulkDelete={async (names) => {
+                    // 이름 → Branch 매핑. 현재 체크아웃 브랜치는 삭제 불가라 제외.
+                    const items = names
+                      .map((n) => log.branches.find((b) => b.name === n))
+                      .filter((b): b is Branch => !!b && !b.isCurrent)
+                    if (items.length === 0) return
+                    const listing = items
+                      .map((b) => (b.isRemote ? `${b.name} (원격)` : b.name))
+                      .join('\n')
+                    if (!window.confirm(`다음 ${items.length}개 브랜치를 삭제할까요?\n\n${listing}`)) return
+                    const notMerged: Branch[] = []
+                    const errors: string[] = []
+                    let deleted = 0
+                    for (const b of items) {
+                      try {
+                        await window.api.git.deleteBranch(repo!, b.name, b.isRemote, false)
+                        deleted++
+                      } catch (e) {
+                        const msg = e instanceof Error ? e.message : String(e)
+                        // 로컬 미병합 브랜치는 모아서 마지막에 한 번에 강제 삭제 여부를 묻는다.
+                        if (!b.isRemote && /not fully merged/i.test(msg)) notMerged.push(b)
+                        else errors.push(`${b.name}: ${msg}`)
+                      }
+                    }
+                    if (
+                      notMerged.length > 0 &&
+                      window.confirm(
+                        `${notMerged.length}개 브랜치가 병합되지 않았습니다. 강제 삭제할까요?\n\n` +
+                          notMerged.map((b) => b.name).join('\n'),
+                      )
+                    ) {
+                      for (const b of notMerged) {
+                        try {
+                          await window.api.git.deleteBranch(repo!, b.name, false, true)
+                          deleted++
+                        } catch (e) {
+                          errors.push(`${b.name}: ${e instanceof Error ? e.message : String(e)}`)
+                        }
+                      }
+                    }
+                    if (errors.length > 0) {
+                      useToast.getState().show(`${deleted}개 삭제, ${errors.length}개 실패:\n${errors.join('\n')}`)
+                    } else {
+                      notify(`${deleted}개 브랜치 삭제됨`)
+                    }
+                    // 삭제된 브랜치를 히스토리로 보고 있었다면 '전체 브랜치'로 되돌린다.
+                    const viewed = useLogStore.getState().selectedRef
+                    if (viewed && items.some((b) => b.name === viewed)) {
+                      await log.selectBranch(repo!, null)
+                    } else {
+                      log.refresh(repo!)
+                    }
+                  }}
                   onCreate={async () => {
                     const name = await ask('새 브랜치 이름')
                     if (name) {
@@ -256,9 +313,20 @@ export default function App() {
                 onDrag={(d) => setBranchW((w) => clamp(w + d, 140, 500))}
               />
               <div className="flex-1 flex flex-col min-w-0">
+                <LogFilterBar
+                  filter={log.filter}
+                  authors={log.authors}
+                  onChange={(patch) => log.setFilter(repo!, patch)}
+                  onClear={() => log.clearFilter(repo!)}
+                />
                 <div className="flex-1 flex min-h-0">
                   <div className="flex-1 flex min-w-0 min-h-0">
-                    {log.graph && (
+                    {log.commits.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-neutral-500">
+                        일치하는 커밋이 없습니다
+                      </div>
+                    ) : (
+                      log.graph && (
                       <CommitGraph
                         commits={log.commits}
                         graph={log.graph}
@@ -297,6 +365,7 @@ export default function App() {
                           setSquashTarget({ hashes, initial })
                         }}
                       />
+                      )
                     )}
                   </div>
                   <Splitter

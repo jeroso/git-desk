@@ -6,6 +6,7 @@ export type {
   Branch,
 } from '../electron/git/types'
 export type { GraphLayout, GraphNode, GraphEdge } from '../electron/git/graph'
+export type { LogFilter } from '../electron/git/log'
 export type { RecentRepo } from '../electron/repos/store'
 export type { SshHost } from '../electron/ssh/config'
 export type { RemoteInfo } from '../electron/git/remote'
