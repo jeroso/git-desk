@@ -142,8 +142,8 @@ export function CommitGraph({
                   {c.subject}
                 </span>
                 <span className="text-gray-500 dark:text-neutral-400 w-20 truncate">{c.author}</span>
-                <span className="text-gray-400 dark:text-neutral-500 w-16 text-right">
-                  {c.dateISO.slice(0, 10)}
+                <span className="text-gray-400 dark:text-neutral-500 w-28 text-right">
+                  {c.dateISO.slice(0, 16).replace('T', ' ')}
                 </span>
               </button>
             )
