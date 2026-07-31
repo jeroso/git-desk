@@ -48,6 +48,10 @@ export function openDiffWindow(title: string, diff: string, parent?: BrowserWind
     height: 700,
     parent,
     title,
+    // macOS: a fullscreenable child window (NSWindowCollectionBehaviorFullScreenPrimary) gets
+    // pulled into a fullscreen parent's Space as a fullscreen window itself, and closing it
+    // leaves that Space blank. Auxiliary behaviour floats it over the parent at its own size.
+    fullscreenable: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   })
   const html = buildHtml(title, diff)
