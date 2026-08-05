@@ -34,7 +34,14 @@ async function run(
       // date", "not fully merged" 등) 로캘이 한국어여도 감지가 깨지지 않는다. 파일 내용·
       // 커밋 메시지는 raw 바이트로 나오고 비ASCII 경로는 core.quotePath로 이미 이스케이프
       // 되므로 내용에는 영향 없다.
-      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', ...opts?.env },
+      // GIT_EDITOR=true: 에디터를 절대 띄우지 않는다. 여기서 git은 터미널 없이 파이프로만
+      // 실행되는데, `rebase --continue`는 (merge와 달리 tty 검사 없이) 커밋 메시지 에디터를
+      // 띄운다. 그러면 vi가 파이프에 붙어 영원히 멈추고 → 해당 git 호출이 끝나지 않아
+      // 버튼이 무반응이 되고, 저장소별 직렬화 큐(아래)까지 막혀 앱 전체가 멎는다.
+      // `true`는 즉시 성공하므로 git이 준비한 메시지가 그대로 커밋된다. config(core.editor)가
+      // 아니라 env로 지정해야 셸에서 물려받은 EDITOR/GIT_EDITOR(vim 등)를 확실히 덮는다.
+      // 앱의 모든 메시지 입력은 UI 다이얼로그에서 -m/-F로 전달하므로 에디터가 필요 없다.
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', GIT_EDITOR: 'true', ...opts?.env },
     })
     return stdout
   } catch (err) {
