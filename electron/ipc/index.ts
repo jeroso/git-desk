@@ -15,6 +15,7 @@ import {
 } from '../git/ops'
 import { rebaseEdit, type RebaseEditRequest } from '../git/rebaseEdit'
 import { readWorktreeFile, writeWorktreeFile } from '../git/worktreeFile'
+import { rebuildConflictText } from '../git/conflictRebuild'
 import { getConflictState } from '../git/conflictState'
 
 export function registerIpc() {
@@ -130,6 +131,9 @@ export function registerIpc() {
   )
   ipcMain.handle('git:writeWorktreeFile', (_e, repo: string, file: string, content: string) =>
     writeWorktreeFile(repo, file, content),
+  )
+  ipcMain.handle('git:rebuildConflictText', (_e, repo: string, file: string) =>
+    rebuildConflictText(repo, file),
   )
   ipcMain.handle('git:rollback', (_e, repo: string, files: { path: string; status: string }[]) =>
     rollback(repo, files),

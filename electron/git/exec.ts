@@ -9,6 +9,11 @@ export class GitError extends Error {
     public args: string[],
     public code: number,
     public stderr: string,
+    /**
+     * 실패한 호출의 stdout. 보통 비어 있지만, 종료코드를 결과로 쓰는 명령
+     * (`merge-file`은 충돌 개수를 반환)에서는 여기에 정상 출력이 담긴다.
+     */
+    public stdout = '',
   ) {
     super(`git ${args.join(' ')} failed (code ${code}): ${stderr.trim()}`)
     this.name = 'GitError'
@@ -45,8 +50,8 @@ async function run(
     })
     return stdout
   } catch (err) {
-    const e = err as { code?: number; stderr?: string; message: string }
-    throw new GitError(args, e.code ?? -1, e.stderr ?? e.message)
+    const e = err as { code?: number; stderr?: string; stdout?: string; message: string }
+    throw new GitError(args, e.code ?? -1, e.stderr ?? e.message, e.stdout ?? '')
   }
 }
 

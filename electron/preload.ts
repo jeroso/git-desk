@@ -73,6 +73,9 @@ const api = {
       ipcRenderer.invoke('git:readWorktreeFile', repo, file),
     writeWorktreeFile: (repo: string, file: string, content: string) =>
       ipcRenderer.invoke('git:writeWorktreeFile', repo, file, content),
+    /** 마커가 지워진 충돌 파일을 인덱스 stage에서 복원. 불가하면 null. */
+    rebuildConflictText: (repo: string, file: string): Promise<string | null> =>
+      ipcRenderer.invoke('git:rebuildConflictText', repo, file),
     rollback: (repo: string, files: { path: string; status: string }[]) =>
       ipcRenderer.invoke('git:rollback', repo, files),
   },

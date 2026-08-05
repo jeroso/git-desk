@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { FileChange } from '../types'
-import { withToast } from '../lib/api'
+import { withToast, withToastOk } from '../lib/api'
 import { rangeBetween } from '../lib/select'
 
 interface CommitState {
@@ -83,7 +83,7 @@ export const useCommitStore = create<CommitState>((set, get) => ({
       .changes.filter((c) => set2.has(c.path))
       .map((c) => ({ path: c.path, status: c.status }))
     if (files.length === 0) return
-    const res = await withToast(() => window.api.git.rollback(repo, files))
-    if (res !== undefined) await get().refresh(repo)
+    // rollback은 Promise<void> — 성공/실패를 undefined로 판별할 수 없어 withToastOk를 쓴다.
+    if (await withToastOk(() => window.api.git.rollback(repo, files))) await get().refresh(repo)
   },
 }))
