@@ -93,7 +93,8 @@ export default function App() {
     const status: FileChange[] = (await withToast(() => window.api.git.status(repoPath))) ?? []
     const conflicted = status.filter((c) => c.status === 'conflicted').map((c) => c.path)
     if (conflicted.length > 0) {
-      conflict.open(op, conflicted)
+      // merge/rebase 자체는 성공했는데 충돌이 남았으면, 보관해 둔 로컬 변경(--autostash)을 다시 적용하다 난 충돌이다
+      conflict.open(res?.ok && (op === 'merge' || op === 'rebase') ? 'autostash' : op, conflicted)
     } else if (res && !res.ok) {
       useToast.getState().show(res.output)
     } else if (res && res.ok) {

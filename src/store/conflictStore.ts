@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 
 // 'checkout' is special: a `git checkout -m` left conflict markers in the working tree.
-type Op = 'merge' | 'rebase' | 'cherry-pick' | 'checkout' | 'revert'
+// 'autostash' likewise: merge/rebase finished, but re-applying the auto-stashed local changes conflicted.
+type Op = 'merge' | 'rebase' | 'cherry-pick' | 'checkout' | 'revert' | 'autostash'
 
 interface Detected {
   inProgress: boolean

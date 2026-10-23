@@ -27,7 +27,9 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
 
   // checkout 모드: `git checkout -m`이 남긴 충돌. continue/commit 개념이 없고,
   // 사용자가 파일을 해결한 뒤 닫으면 변경은 작업트리에 그대로 남는다.
-  const isCheckout = op === 'checkout'
+  // autostash 모드도 같다: merge/rebase 는 끝났고, 보관해 둔 로컬 변경을 다시 적용하다 충돌했다(원본은 stash 에 남는다).
+  const isAutostash = op === 'autostash'
+  const isCheckout = op === 'checkout' || isAutostash
   // checkout을 제외한 충돌 op(merge/rebase/cherry-pick/revert)에서 abort/continue에 사용.
   const resumeOp = op as 'merge' | 'rebase' | 'cherry-pick' | 'revert'
 
@@ -35,8 +37,14 @@ export function ConflictPanel({ repo, onDone }: { repo: string; onDone: () => vo
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40">
       <div className="bg-white dark:bg-neutral-800 dark:text-neutral-100 rounded-lg shadow-xl w-[32rem] p-4 text-xs space-y-3">
         <div className="font-semibold text-sm text-red-600">
-          {isCheckout ? '체크아웃 머지 충돌' : `충돌 발생 — ${op} 중`} ({files.length} files)
+          {isAutostash ? '로컬 변경 되돌리기 충돌' : isCheckout ? '체크아웃 머지 충돌' : `충돌 발생 — ${op} 중`} ({files.length} files)
         </div>
+        {isAutostash && (
+          <div className="text-gray-600 dark:text-neutral-300">
+            작업은 끝났습니다. 시작 전에 잠시 보관해 둔 커밋하지 않은 변경을 다시 적용하다 새 커밋과 충돌했습니다. 파일을 정리한 뒤
+            "완료"를 누르세요. 원래 변경은 stash 에 "autostash"로 남아 있어, 정리가 끝나면 지워도 됩니다(git stash drop).
+          </div>
+        )}
         {files.length === 0 && (
           <div className="text-gray-500 dark:text-neutral-400">
             {isCheckout

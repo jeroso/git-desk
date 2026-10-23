@@ -14,11 +14,13 @@ async function tryOp(repo: string, args: string[]): Promise<{ ok: boolean; outpu
   }
 }
 
+// 커밋하지 않은 로컬 변경이 있어도 IntelliJ 처럼 잠시 보관했다가(--autostash) 끝나면 다시 적용한다.
+// 다시 적용할 때 충돌하면 git 은 작업을 성공으로 끝내고 충돌 표시와 stash 를 남긴다(호출부가 status 로 확인).
 export function mergeBranch(repo: string, branch: string) {
-  return tryOp(repo, ['merge', '--no-edit', branch])
+  return tryOp(repo, ['merge', '--no-edit', '--autostash', branch])
 }
 export function rebaseOnto(repo: string, branch: string) {
-  return tryOp(repo, ['rebase', branch])
+  return tryOp(repo, ['rebase', '--autostash', branch])
 }
 /** 하나 이상의 커밋을 순서대로 cherry-pick한다 (호출부가 oldest→newest 순서로 전달). */
 export function cherryPick(repo: string, hashes: string[]) {
